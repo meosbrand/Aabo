@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,6 +23,7 @@ import {
   LifeBuoy,
   LogOut,
   Languages,
+  Menu,
 } from "lucide-react";
 import { AaboLogo } from "@/components/aabo-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/lib/translations";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -44,83 +47,146 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   ];
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <AaboLogo className="w-8 h-8 text-primary" />
-            <span className="text-xl font-semibold text-foreground group-data-[collapsible=icon]:hidden">
-              Ààbò
-            </span>
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-background md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <AaboLogo className="h-6 w-6 text-primary" />
+              <span className="">Ààbò</span>
+            </Link>
           </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
+          <div className="flex-1">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
+                    pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
                 </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-           <SidebarMenu>
-            <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t.sidebar.support}>
-                    <LifeBuoy />
-                    <span>{t.sidebar.support}</span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-                <Link href="/login">
-                  <SidebarMenuButton tooltip={t.sidebar.logout}>
-                      <LogOut />
-                      <span>{t.sidebar.logout}</span>
-                  </SidebarMenuButton>
+              ))}
+            </nav>
+          </div>
+          <div className="mt-auto p-4">
+             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                 <Link
+                  href="#"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <LifeBuoy className="h-4 w-4" />
+                  {t.sidebar.support}
                 </Link>
-            </SidebarMenuItem>
-           </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <div className="flex flex-col min-h-screen">
-          <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 justify-between">
-            <div className="flex items-center gap-4">
-                <div className="md:hidden">
-                    <SidebarTrigger />
-                </div>
-                <h1 className="text-xl font-semibold">{menuItems.find(item => item.href === pathname)?.label || 'Ààbò'}</h1>
-            </div>
-             <div className="flex items-center gap-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Languages className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setLanguage('en')}>English</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLanguage('pidgin')}>Pidgin</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Avatar>
-                  <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person smiling"/>
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-            </div>
-          </header>
-          <main className="flex-1 p-4 md:p-8 bg-secondary/50">{children}</main>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t.sidebar.logout}
+                </Link>
+             </nav>
+          </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+      <div className="flex flex-col">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex flex-col">
+              <nav className="grid gap-2 text-lg font-medium">
+                <Link
+                  href="#"
+                  className="flex items-center gap-2 text-lg font-semibold mb-4"
+                >
+                  <AaboLogo className="h-6 w-6 text-primary" />
+                  <span className="sr-only">Ààbò</span>
+                </Link>
+                {menuItems.map((item) => (
+                    <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2  ${
+                        pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                    </Link>
+                ))}
+              </nav>
+               <div className="mt-auto">
+                 <nav className="grid gap-2 text-lg font-medium">
+                    <Link
+                    href="#"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <LifeBuoy className="h-5 w-5" />
+                        {t.sidebar.support}
+                    </Link>
+                     <Link
+                    href="/login"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <LogOut className="h-5 w-5" />
+                        {t.sidebar.logout}
+                    </Link>
+                 </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <div className="w-full flex-1">
+             <h1 className="text-xl font-semibold md:text-2xl">{menuItems.find(item => pathname.startsWith(item.href))?.label || 'Ààbò'}</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <Languages className="h-5 w-5" />
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLanguage('en')}>English</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('pidgin')}>Pidgin</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full">
+                    <Avatar>
+                        <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person smiling"/>
+                        <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Profile</DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem>Support</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+           </div>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-secondary/50">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }
 

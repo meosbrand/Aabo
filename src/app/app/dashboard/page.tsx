@@ -87,21 +87,27 @@ export default function DashboardPage() {
                     <CardDescription>{T.quickActionsDesc}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" className="h-20 flex-col gap-1">
-                        <FileClock />
-                        <span>{T.actionBackup}</span>
+                     <Button variant="outline" className="h-20 flex-col gap-1" asChild>
+                        <Link href="/app/backup">
+                            <FileClock />
+                            <span>{T.actionBackup}</span>
+                        </Link>
                     </Button>
                     <Button variant="outline" className="h-20 flex-col gap-1">
                         <ShieldCheck />
                         <span>{T.actionScan}</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex-col gap-1">
-                        <User />
-                        <span>{T.actionProfile}</span>
+                     <Button variant="outline" className="h-20 flex-col gap-1" asChild>
+                       <Link href="/app/settings">
+                            <User />
+                            <span>{T.actionProfile}</span>
+                       </Link>
                     </Button>
-                    <Button variant="destructive" className="h-20 flex-col gap-1">
-                        <AlertCircle />
-                        <span>{T.actionPanic}</span>
+                    <Button variant="destructive" className="h-20 flex-col gap-1" asChild>
+                       <Link href="/app/panic">
+                             <AlertCircle />
+                            <span>{T.actionPanic}</span>
+                       </Link>
                     </Button>
                 </CardContent>
             </Card>
