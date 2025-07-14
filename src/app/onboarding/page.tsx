@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { AaboLogo } from '@/components/aabo-logo';
 import { ArrowLeft, Check, Mail, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const steps = [
   {
@@ -28,10 +29,32 @@ const steps = [
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [name, setName] = useState('');
+  const [direction, setDirection] = useState(1);
   const progress = ((currentStep + 1) / steps.length) * 100;
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
+  const nextStep = () => {
+    setDirection(1);
+    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+  }
+  const prevStep = () => {
+    setDirection(-1);
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  }
+
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 500 : -500,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 500 : -500,
+      opacity: 0,
+    }),
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-secondary p-4">
@@ -44,53 +67,69 @@ export default function OnboardingPage() {
             <Progress value={progress} className="w-full h-2" />
         </div>
         
-        <Card className="shadow-2xl">
+        <Card className="shadow-2xl overflow-hidden">
             <CardHeader>
                 <CardTitle className="text-2xl font-bold">{steps[currentStep].title}</CardTitle>
                 <CardDescription>{steps[currentStep].description}</CardDescription>
             </CardHeader>
-            <CardContent>
-                {currentStep === 0 && (
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">What should we call you?</Label>
-                            <Input 
-                                id="name" 
-                                placeholder="Enter your name" 
-                                value={name}
-                                onChange={(e) => setName(e.target.value)} 
-                            />
-                        </div>
-                    </div>
-                )}
-                {currentStep === 1 && (
-                    <div className="space-y-4">
-                        <Button variant="outline" className="w-full justify-start h-14 text-left">
-                            <MessageCircle className="mr-4 h-6 w-6 text-green-500" />
-                            <div>
-                                <p className="font-semibold">Connect WhatsApp</p>
-                                <p className="text-sm text-muted-foreground">Receive alerts via messages.</p>
+            <CardContent className="relative h-64">
+                <AnimatePresence initial={false} custom={direction}>
+                    <motion.div
+                        key={currentStep}
+                        custom={direction}
+                        variants={variants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{
+                            x: { type: "spring", stiffness: 300, damping: 30 },
+                            opacity: { duration: 0.2 }
+                        }}
+                        className="absolute w-full px-6"
+                    >
+                        {currentStep === 0 && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">What should we call you?</Label>
+                                    <Input 
+                                        id="name" 
+                                        placeholder="Enter your name" 
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)} 
+                                    />
+                                </div>
                             </div>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start h-14 text-left">
-                            <Mail className="mr-4 h-6 w-6 text-blue-500" />
-                            <div>
-                                <p className="font-semibold">Connect Email</p>
-                                <p className="text-sm text-muted-foreground">Receive alerts in your inbox.</p>
+                        )}
+                        {currentStep === 1 && (
+                            <div className="space-y-4">
+                                <Button variant="outline" className="w-full justify-start h-14 text-left">
+                                    <MessageCircle className="mr-4 h-6 w-6 text-green-500" />
+                                    <div>
+                                        <p className="font-semibold">Connect WhatsApp</p>
+                                        <p className="text-sm text-muted-foreground">Receive alerts via messages.</p>
+                                    </div>
+                                </Button>
+                                <Button variant="outline" className="w-full justify-start h-14 text-left">
+                                    <Mail className="mr-4 h-6 w-6 text-blue-500" />
+                                    <div>
+                                        <p className="font-semibold">Connect Email</p>
+                                        <p className="text-sm text-muted-foreground">Receive alerts in your inbox.</p>
+                                    </div>
+                                </Button>
                             </div>
-                        </Button>
-                    </div>
-                )}
-                 {currentStep === 2 && (
-                    <div className="text-center p-8">
-                       <div className="flex justify-center items-center">
-                         <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-                            <Check className="w-12 h-12 text-green-600" />
-                         </div>
-                       </div>
-                       <p className="mt-4 text-muted-foreground">You are now protected. Welcome aboard, {name || "friend"}!</p>
-                    </div>
-                )}
+                        )}
+                        {currentStep === 2 && (
+                            <div className="text-center p-8">
+                            <div className="flex justify-center items-center">
+                                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+                                    <Check className="w-12 h-12 text-green-600" />
+                                </div>
+                            </div>
+                            <p className="mt-4 text-muted-foreground">You are now protected. Welcome aboard, {name || "friend"}!</p>
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
             </CardContent>
             <div className="flex items-center justify-between p-6">
                 <Button variant="ghost" onClick={prevStep} disabled={currentStep === 0}>
