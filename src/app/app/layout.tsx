@@ -31,7 +31,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/lib/translations";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
