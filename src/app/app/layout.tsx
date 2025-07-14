@@ -42,6 +42,7 @@ import {
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
+  const { state } = useSidebar();
 
   const menuItems = [
     { href: "/app/dashboard", icon: LayoutDashboard, label: t.sidebar.dashboard },
@@ -51,11 +52,10 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     { href: "/app/settings", icon: Settings, label: t.sidebar.settings },
   ];
 
-  const { state } = useSidebar();
-
+  const currentLabel = menuItems.find(item => pathname.startsWith(item.href))?.label || 'Ààbò';
 
   return (
-    <>
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Sidebar>
         <SidebarHeader>
             <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -70,7 +70,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                  <Link href={item.href} className="w-full">
                     <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label}}>
                         <item.icon />
-                        <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{item.label}</span>
+                        <span>{item.label}</span>
                     </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
@@ -83,7 +83,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     <Link href="#" className="w-full">
                         <SidebarMenuButton tooltip={{children: t.sidebar.support}}>
                             <LifeBuoy />
-                            <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{t.sidebar.support}</span>
+                            <span>{t.sidebar.support}</span>
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
@@ -91,22 +91,21 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     <Link href="/login" className="w-full">
                         <SidebarMenuButton tooltip={{children: t.sidebar.logout}}>
                             <LogOut />
-                            <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{t.sidebar.logout}</span>
+                            <span>{t.sidebar.logout}</span>
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
            </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-           <SidebarTrigger className="md:hidden">
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+           <SidebarTrigger className="sm:hidden">
               <PanelLeft />
            </SidebarTrigger>
 
-          <div className="w-full flex-1">
-             <h1 className="text-xl font-semibold md:text-2xl">{menuItems.find(item => pathname.startsWith(item.href))?.label || 'Ààbò'}</h1>
-          </div>
+          <h1 className="text-xl font-semibold md:text-2xl flex-1">{currentLabel}</h1>
+          
           <div className="flex items-center gap-4">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -139,26 +138,20 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             </DropdownMenu>
            </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-secondary/50">
+        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 bg-muted/40 sm:bg-transparent">
           {children}
         </main>
-      </SidebarInset>
-    </>
+      </div>
+    </div>
   );
 };
-
-const WrappedAppLayout = ({ children }: { children: React.ReactNode }) => {
-    return (
-        <SidebarProvider>
-            <AppLayoutContent>{children}</AppLayoutContent>
-        </SidebarProvider>
-    )
-}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <WrappedAppLayout>{children}</WrappedAppLayout>
+      <SidebarProvider>
+        <AppLayoutContent>{children}</AppLayoutContent>
+      </SidebarProvider>
     </LanguageProvider>
   );
 }
