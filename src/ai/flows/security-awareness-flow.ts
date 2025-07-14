@@ -11,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import Handlebars from 'handlebars';
 
 const SecurityAwarenessInputSchema = z.object({
   query: z.string().describe('The user query about security. Be concise.'),
@@ -46,6 +47,12 @@ const prompt = ai.definePrompt({
       User Query: {{{query}}}
     {{/if}}
   `,
+  template: {
+    engine: Handlebars,
+    helpers: {
+        eq: (a: any, b: any) => a === b,
+    }
+  }
 });
 
 
