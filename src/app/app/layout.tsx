@@ -26,23 +26,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarInset,
-  useSidebar,
-} from "@/components/ui/sidebar";
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
-  const { state } = useSidebar();
 
   const menuItems = [
     { href: "/app/dashboard", icon: LayoutDashboard, label: t.sidebar.dashboard },
@@ -54,58 +45,110 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
 
   const currentLabel = menuItems.find(item => pathname.startsWith(item.href))?.label || 'Ààbò';
 
+  const NavLink = ({ href, icon: Icon, label }: { href: string, icon: React.ElementType, label: string }) => {
+    const isActive = pathname.startsWith(href);
+    return (
+        <Link
+            href={href}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${isActive ? 'bg-muted text-primary' : ''}`}
+        >
+            <Icon className="h-4 w-4" />
+            {label}
+        </Link>
+    );
+  };
+
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Sidebar>
-        <SidebarHeader>
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-muted/40 md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
               <AaboLogo className="h-6 w-6 text-primary" />
-              <span className={state === 'collapsed' ? 'hidden' : 'inline'}>Ààbò</span>
+              <span>Ààbò</span>
             </Link>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                 <Link href={item.href} className="w-full">
-                    <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label}}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                    </SidebarMenuButton>
+          </div>
+          <div className="flex-1">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+              {menuItems.map(item => <NavLink key={item.href} {...item} />)}
+            </nav>
+          </div>
+          <div className="mt-auto p-4">
+             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                <Link
+                    href="#"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                    <LifeBuoy className="h-4 w-4" />
+                    {t.sidebar.support}
                 </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-           <SidebarMenu>
-                <SidebarMenuItem>
-                    <Link href="#" className="w-full">
-                        <SidebarMenuButton tooltip={{children: t.sidebar.support}}>
-                            <LifeBuoy />
-                            <span>{t.sidebar.support}</span>
-                        </SidebarMenuButton>
+                <Link
+                    href="/login"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                    <LogOut className="h-4 w-4" />
+                    {t.sidebar.logout}
+                </Link>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 md:hidden"
+              >
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex flex-col">
+              <nav className="grid gap-2 text-lg font-medium">
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 text-lg font-semibold mb-4"
+                >
+                  <AaboLogo className="h-6 w-6 text-primary" />
+                  <span>Ààbò</span>
+                </Link>
+                {menuItems.map(item => (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                       <item.icon className="h-5 w-5" />
+                       {item.label}
                     </Link>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <Link href="/login" className="w-full">
-                        <SidebarMenuButton tooltip={{children: t.sidebar.logout}}>
-                            <LogOut />
-                            <span>{t.sidebar.logout}</span>
-                        </SidebarMenuButton>
+                ))}
+              </nav>
+              <div className="mt-auto">
+                 <nav className="grid gap-2 text-lg font-medium">
+                    <Link
+                        href="#"
+                        className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                       <LifeBuoy className="h-5 w-5" />
+                       {t.sidebar.support}
                     </Link>
-                </SidebarMenuItem>
-           </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-           <SidebarTrigger className="sm:hidden">
-              <PanelLeft />
-           </SidebarTrigger>
-
-          <h1 className="text-xl font-semibold md:text-2xl flex-1">{currentLabel}</h1>
-          
+                     <Link
+                        href="/login"
+                        className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                       <LogOut className="h-5 w-5" />
+                       {t.sidebar.logout}
+                    </Link>
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <div className="w-full flex-1">
+             <h1 className="text-xl font-semibold md:text-2xl">{currentLabel}</h1>
+          </div>
           <div className="flex items-center gap-4">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -138,7 +181,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             </DropdownMenu>
            </div>
         </header>
-        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 bg-muted/40 sm:bg-transparent">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40 sm:bg-transparent">
           {children}
         </main>
       </div>
@@ -149,9 +192,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <SidebarProvider>
         <AppLayoutContent>{children}</AppLayoutContent>
-      </SidebarProvider>
     </LanguageProvider>
   );
 }
