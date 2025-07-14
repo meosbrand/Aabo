@@ -36,6 +36,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
@@ -50,13 +51,16 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     { href: "/app/settings", icon: Settings, label: t.sidebar.settings },
   ];
 
+  const { state } = useSidebar();
+
+
   return (
-    <SidebarProvider>
+    <>
       <Sidebar>
         <SidebarHeader>
             <Link href="/" className="flex items-center gap-2 font-semibold">
               <AaboLogo className="h-6 w-6 text-primary" />
-              <span>Ààbò</span>
+              <span className={state === 'collapsed' ? 'hidden' : 'inline'}>Ààbò</span>
             </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -66,7 +70,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                  <Link href={item.href} className="w-full">
                     <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label}}>
                         <item.icon />
-                        <span>{item.label}</span>
+                        <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{item.label}</span>
                     </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
@@ -79,7 +83,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     <Link href="#" className="w-full">
                         <SidebarMenuButton tooltip={{children: t.sidebar.support}}>
                             <LifeBuoy />
-                            <span>{t.sidebar.support}</span>
+                            <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{t.sidebar.support}</span>
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
@@ -87,7 +91,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     <Link href="/login" className="w-full">
                         <SidebarMenuButton tooltip={{children: t.sidebar.logout}}>
                             <LogOut />
-                            <span>{t.sidebar.logout}</span>
+                            <span className={state === 'collapsed' ? 'hidden' : 'inline'}>{t.sidebar.logout}</span>
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
@@ -139,14 +143,22 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           {children}
         </main>
       </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 };
+
+const WrappedAppLayout = ({ children }: { children: React.ReactNode }) => {
+    return (
+        <SidebarProvider>
+            <AppLayoutContent>{children}</AppLayoutContent>
+        </SidebarProvider>
+    )
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
+      <WrappedAppLayout>{children}</WrappedAppLayout>
     </LanguageProvider>
   );
 }
