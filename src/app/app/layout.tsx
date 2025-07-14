@@ -50,7 +50,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                    pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground"
+                    pathname.startsWith(item.href) ? "bg-muted text-primary" : "text-muted-foreground"
                   }`}
                 >
                   <item.icon className="h-4 w-4" />
@@ -106,7 +106,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     key={item.href}
                     href={item.href}
                     className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2  ${
-                        pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground"
+                        pathname.startsWith(item.href) ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                     >
                     <item.icon className="h-5 w-5" />
