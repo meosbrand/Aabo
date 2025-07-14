@@ -3,18 +3,6 @@
 
 import Link from "next/link";
 import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarInset,
-} from "@/components/ui/sidebar";
-import {
   LayoutDashboard,
   FileClock,
   Bot,
@@ -30,7 +18,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
-import { translations } from "@/lib/translations";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -112,7 +99,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   className="flex items-center gap-2 text-lg font-semibold mb-4"
                 >
                   <AaboLogo className="h-6 w-6 text-primary" />
-                  <span className="sr-only">Ààbò</span>
+                  <span>Ààbò</span>
                 </Link>
                 {menuItems.map((item) => (
                     <Link
@@ -188,8 +175,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
       </div>
     </div>
   );
-}
-
+};
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
