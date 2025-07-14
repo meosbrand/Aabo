@@ -1,3 +1,4 @@
+
 "use server";
 
 import { securityAwarenessChatbot, type SecurityAwarenessInput } from "@/ai/flows/security-awareness-flow";
@@ -8,6 +9,9 @@ export async function getSecurityAdvice(input: SecurityAwarenessInput) {
     return { success: true, advice: result.advice };
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Sorry, I couldn't get advice right now. Please try again later." };
+    const errorMessage = input.language === 'pidgin' 
+      ? "Sorry o, my brain just hang. I no fit get advice for you now. Try again later." 
+      : "Sorry, I couldn't get advice right now. Please try again later.";
+    return { success: false, error: errorMessage };
   }
 }

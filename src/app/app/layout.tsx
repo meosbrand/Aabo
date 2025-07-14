@@ -19,25 +19,29 @@ import {
   Bot,
   AlertTriangle,
   Settings,
-  CircleUser,
   LifeBuoy,
   LogOut,
+  Languages,
 } from "lucide-react";
 import { AaboLogo } from "@/components/aabo-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/lib/translations";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const menuItems = [
-  { href: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/app/backup", icon: FileClock, label: "Backup Center" },
-  { href: "/app/copilot", icon: Bot, label: "Ààbò Co-Pilot" },
-  { href: "/app/panic", icon: AlertTriangle, label: "Panic Trigger" },
-  { href: "/app/settings", icon: Settings, label: "Settings" },
-];
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
+  const { language, setLanguage, t } = useLanguage();
+
+  const menuItems = [
+    { href: "/app/dashboard", icon: LayoutDashboard, label: t.sidebar.dashboard },
+    { href: "/app/backup", icon: FileClock, label: t.sidebar.backup },
+    { href: "/app/copilot", icon: Bot, label: t.sidebar.copilot },
+    { href: "/app/panic", icon: AlertTriangle, label: t.sidebar.panic },
+    { href: "/app/settings", icon: Settings, label: t.sidebar.settings },
+  ];
 
   return (
     <SidebarProvider>
@@ -70,16 +74,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarFooter>
            <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Support">
+                <SidebarMenuButton tooltip={t.sidebar.support}>
                     <LifeBuoy />
-                    <span>Support</span>
+                    <span>{t.sidebar.support}</span>
                 </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
                 <Link href="/login">
-                  <SidebarMenuButton tooltip="Logout">
+                  <SidebarMenuButton tooltip={t.sidebar.logout}>
                       <LogOut />
-                      <span>Logout</span>
+                      <span>{t.sidebar.logout}</span>
                   </SidebarMenuButton>
                 </Link>
             </SidebarMenuItem>
@@ -95,14 +99,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
                 <h1 className="text-xl font-semibold">{menuItems.find(item => item.href === pathname)?.label || 'Ààbò'}</h1>
             </div>
-            <Avatar>
-              <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person smiling"/>
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+             <div className="flex items-center gap-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Languages className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setLanguage('en')}>English</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLanguage('pidgin')}>Pidgin</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Avatar>
+                  <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person smiling"/>
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+            </div>
           </header>
           <main className="flex-1 p-4 md:p-8 bg-secondary/50">{children}</main>
         </div>
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <LanguageProvider>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </LanguageProvider>
+  )
 }

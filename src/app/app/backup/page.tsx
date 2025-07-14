@@ -1,74 +1,81 @@
+
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileClock, HardDrive, PlusCircle } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const backupHistory = [
-  { date: "2023-10-26", type: "Full System", size: "5.2 GB", status: "Completed" },
-  { date: "2023-10-19", type: "Full System", size: "5.1 GB", status: "Completed" },
-  { date: "2023-10-12", type: "Contacts", size: "128 MB", status: "Completed" },
-  { date: "2023-10-10", type: "Photos", size: "1.5 GB", status: "Failed" },
-  { date: "2023-10-05", type: "Full System", size: "4.8 GB", status: "Completed" },
+  { date: "2023-10-26", type: "Full System", size: "5.2 GB", status: "Completed", statusPidgin: "Done Wella" },
+  { date: "2023-10-19", type: "Full System", size: "5.1 GB", status: "Completed", statusPidgin: "Done Wella" },
+  { date: "2023-10-12", type: "Contacts", size: "128 MB", status: "Completed", statusPidgin: "Done Wella" },
+  { date: "2023-10-10", type: "Photos", size: "1.5 GB", status: "Failed", statusPidgin: "E Fail" },
+  { date: "2023-10-05", type: "Full System", size: "4.8 GB", status: "Completed", statusPidgin: "Done Wella" },
 ];
 
 export default function BackupPage() {
+    const { language, t } = useLanguage();
+    const T = t.backup[language];
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-3xl font-bold">Backup Center</h1>
-            <p className="text-muted-foreground">Manage and monitor your data backups.</p>
+            <h1 className="text-3xl font-bold">{T.title}</h1>
+            <p className="text-muted-foreground">{T.description}</p>
         </div>
         <Button>
             <PlusCircle className="mr-2 h-4 w-4"/>
-            New Backup
+            {T.newBackup}
         </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><FileClock className="text-primary"/>Backup Status</CardTitle>
-            <CardDescription>Your last backup was successful.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><FileClock className="text-primary"/>{T.statusTitle}</CardTitle>
+            <CardDescription>{T.statusDescription}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="font-semibold">Last Backup: <span className="font-normal">October 26, 2023</span></p>
-            <p className="font-semibold mt-2">Next Scheduled Backup: <span className="font-normal">November 2, 2023</span></p>
-            <Button variant="outline" className="mt-4">Run Manual Backup</Button>
+            <p className="font-semibold">{T.lastBackup} <span className="font-normal">October 26, 2023</span></p>
+            <p className="font-semibold mt-2">{T.nextBackup} <span className="font-normal">November 2, 2023</span></p>
+            <Button variant="outline" className="mt-4">{T.manualBackup}</Button>
           </CardContent>
         </Card>
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><HardDrive className="text-primary"/>Storage Usage</CardTitle>
-            <CardDescription>You are using 6.8 GB of 15 GB.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><HardDrive className="text-primary"/>{T.storageTitle}</CardTitle>
+            <CardDescription>{T.storageDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <Progress value={45} className="h-3"/>
             <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                <span>Used: 6.8 GB</span>
-                <span>Total: 15 GB</span>
+                <span>{T.storageUsed} 6.8 GB</span>
+                <span>{T.storageTotal} 15 GB</span>
             </div>
-            <Button variant="secondary" className="mt-4">Manage Storage</Button>
+            <Button variant="secondary" className="mt-4">{T.manageStorage}</Button>
           </CardContent>
         </Card>
       </div>
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Backup History</CardTitle>
-          <CardDescription>View your past backup activities and statuses.</CardDescription>
+          <CardTitle>{T.historyTitle}</CardTitle>
+          <CardDescription>{T.historyDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{T.date}</TableHead>
+                <TableHead>{T.type}</TableHead>
+                <TableHead>{T.size}</TableHead>
+                <TableHead>{T.status}</TableHead>
+                <TableHead className="text-right">{T.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -79,11 +86,11 @@ export default function BackupPage() {
                   <TableCell>{backup.size}</TableCell>
                   <TableCell>
                     <Badge variant={backup.status === "Completed" ? "default" : "destructive"} className={backup.status === "Completed" ? "bg-green-600" : ""}>
-                      {backup.status}
+                      {language === 'pidgin' ? backup.statusPidgin : backup.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">Details</Button>
+                    <Button variant="ghost" size="sm">{T.details}</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -94,3 +101,4 @@ export default function BackupPage() {
     </div>
   );
 }
+

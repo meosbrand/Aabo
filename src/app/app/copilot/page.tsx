@@ -1,13 +1,15 @@
+
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Bot, Send, User } from "lucide-react";
 import { getSecurityAdvice } from "@/lib/actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Message {
   id: string;
@@ -20,6 +22,8 @@ export default function CopilotPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { language, t } = useLanguage();
+  const T = t.copilot[language];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,7 +44,7 @@ export default function CopilotPage() {
     setInput("");
     setIsLoading(true);
 
-    const response = await getSecurityAdvice({ query: input });
+    const response = await getSecurityAdvice({ query: input, language });
 
     const botMessage: Message = {
       id: (Date.now() + 1).toString(),
@@ -54,8 +58,8 @@ export default function CopilotPage() {
   return (
     <div className="h-full flex flex-col">
         <div>
-            <h1 className="text-3xl font-bold">Ààbò Co-Pilot</h1>
-            <p className="text-muted-foreground">Your personal AI security assistant.</p>
+            <h1 className="text-3xl font-bold">{T.title}</h1>
+            <p className="text-muted-foreground">{T.description}</p>
         </div>
       <Card className="flex-grow mt-8 flex flex-col shadow-lg">
         <CardContent className="flex-grow p-4 md:p-6 overflow-y-auto">
@@ -63,8 +67,8 @@ export default function CopilotPage() {
             {messages.length === 0 && !isLoading && (
               <div className="text-center text-muted-foreground p-8">
                 <Bot className="w-16 h-16 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold">Ask me anything!</h2>
-                <p>For example: "How can I create a strong password?"</p>
+                <h2 className="text-xl font-semibold">{T.initialPrompt}</h2>
+                <p>{T.examplePrompt}</p>
               </div>
             )}
             {messages.map((message) => (
@@ -103,7 +107,7 @@ export default function CopilotPage() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your security question..."
+              placeholder={T.placeholder}
               autoComplete="off"
               disabled={isLoading}
             />
