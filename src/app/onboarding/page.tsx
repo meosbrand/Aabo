@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -85,7 +86,7 @@ export default function OnboardingPage() {
                             x: { type: "spring", stiffness: 300, damping: 30 },
                             opacity: { duration: 0.2 }
                         }}
-                        className="absolute w-full px-6"
+                        className="absolute inset-0 flex flex-col justify-center px-6"
                     >
                         {currentStep === 0 && (
                             <div className="space-y-4">
@@ -119,7 +120,7 @@ export default function OnboardingPage() {
                             </div>
                         )}
                         {currentStep === 2 && (
-                            <div className="text-center p-8">
+                            <div className="text-center">
                             <div className="flex justify-center items-center">
                                 <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
                                     <Check className="w-12 h-12 text-green-600" />
