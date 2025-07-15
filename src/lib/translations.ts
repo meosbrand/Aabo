@@ -14,7 +14,7 @@ export const translations = {
     pidgin: {
       dashboard: "Your Level",
       backup: "Save Ur Tin",
-      copilot: "Ààbò Mata",
+      copilot: "Ààbò Digital Baba",
       panic: "Yawa Mode",
       profile: "Yourself",
       settings: "Arrange Urself",
@@ -46,7 +46,7 @@ export const translations = {
       protectionStatus: "Your Guard Level",
       protectionDesc: "Your digital juju dey 90% strong.",
       protectionHint: "Arrange your profile make e reach 100%.",
-      copilotTitle: "Ààbò Mata",
+      copilotTitle: "Ààbò Digital Baba",
       copilotDesc: "Any security question wey dey burst your brain? Holla.",
       copilotButton: "Start Gist",
       recentActivity: "Wetin Just Happen",
@@ -115,7 +115,7 @@ export const translations = {
           examplePrompt: "For example: \"How can I create a strong password?\""
       },
       pidgin: {
-          title: "Ààbò Mata",
+          title: "Ààbò Digital Baba",
           description: "Your personal AI security P.A.",
           placeholder: "Ask your security question for here...",
           initialPrompt: "Ask me any-gaddamn-thing!",
