@@ -11,26 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Mail, MessageCircle } from "lucide-react";
+import { Mail, MessageCircle, PenSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 
-/**
- * Zod schema for validating the profile form.
- */
-const profileFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address."),
-});
-
-/**
- * Type definition for the profile form values, inferred from the Zod schema.
- */
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 /**
  * Renders the Settings page.
- * This page contains tabs for managing Profile, Integrations, and Notifications.
+ * This page contains tabs for managing Integrations and Notifications.
+ * The profile management has been moved to its own dedicated page.
  * @returns {JSX.Element} The SettingsPage component.
  */
 export default function SettingsPage() {
@@ -38,26 +27,6 @@ export default function SettingsPage() {
   const { language, t } = useLanguage();
   // Gets the translated strings for the current language.
   const T = t.settings[language];
-
-  // Initializes the form using react-hook-form and Zod for validation.
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      name: "Current User",
-      email: "user@example.com",
-    },
-  });
-
-  /**
-   * Handles form submission for the profile tab.
-   * @param {ProfileFormValues} data - The validated form data.
-   */
-  function onSubmit(data: ProfileFormValues) {
-    toast({
-      title: T.profileUpdateToast,
-      description: T.profileUpdateToastDesc,
-    });
-  }
 
   return (
     <div className="space-y-8">
@@ -67,56 +36,13 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">{T.description}</p>
       </div>
       {/* Tabbed interface for different settings categories */}
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs defaultValue="integrations" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="profile">{T.profileTab}</TabsTrigger>
           <TabsTrigger value="integrations">{T.integrationsTab}</TabsTrigger>
           <TabsTrigger value="notifications">{T.notificationsTab}</TabsTrigger>
+          <TabsTrigger value="account">{T.accountTab}</TabsTrigger>
         </TabsList>
-
-        {/* Profile Tab */}
-        <TabsContent value="profile">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>{T.profileCardTitle}</CardTitle>
-              <CardDescription>{T.profileCardDesc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{T.nameLabel}</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Your name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{T.emailLabel}</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="your@email.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit">{T.saveButton}</Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
+        
         {/* Integrations Tab */}
         <TabsContent value="integrations">
           <Card className="shadow-lg">
@@ -174,6 +100,31 @@ export default function SettingsPage() {
                     </div>
                     <Switch id="weekly-summary" />
                 </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Account Tab */}
+        <TabsContent value="account">
+           <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>{T.accountCardTitle}</CardTitle>
+              <CardDescription>{T.accountCardDesc}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button variant="outline">
+                <PenSquare className="mr-2 h-4 w-4" />
+                {T.changePasswordButton}
+              </Button>
+               <Card className="border-destructive">
+                <CardHeader>
+                  <CardTitle className="text-destructive">{T.deleteAccountTitle}</CardTitle>
+                  <CardDescription>{T.deleteAccountDesc}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="destructive">{T.deleteAccountButton}</Button>
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
         </TabsContent>

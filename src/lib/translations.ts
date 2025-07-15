@@ -6,6 +6,7 @@ export const translations = {
       backup: "Backup Center",
       copilot: "Ààbò The Digital Elder",
       panic: "Panic Trigger",
+      profile: "Profile",
       settings: "Settings",
       support: "Support",
       logout: "Logout",
@@ -15,6 +16,7 @@ export const translations = {
       backup: "Save Ur Tin",
       copilot: "Ààbò Mata",
       panic: "Yawa Mode",
+      profile: "Yourself",
       settings: "Arrange Urself",
       support: "Holla Us",
       logout: "Comot",
@@ -142,20 +144,35 @@ export const translations = {
           shutdown: "Close Everything"
       }
   },
+  profile: {
+    en: {
+        title: "My Profile",
+        description: "View and manage your personal information.",
+        editButton: "Edit in Settings",
+        detailsTitle: "Account Details",
+        detailsDescription: "Your personal and account information.",
+        emailLabel: "Email Address",
+        memberSinceLabel: "Member Since",
+        protectionPlanLabel: "Protection Plan"
+    },
+    pidgin: {
+        title: "My Tori",
+        description: "See and arrange your personal information.",
+        editButton: "Change am for Settings",
+        detailsTitle: "Your Account Tori",
+        detailsDescription: "Your personal and account information.",
+        emailLabel: "Email Address",
+        memberSinceLabel: "Time you join",
+        protectionPlanLabel: "Your Guard Plan"
+    }
+  },
   settings: {
     en: {
       title: "Settings",
-      description: "Manage your account and preferences.",
-      profileTab: "Profile",
+      description: "Manage integrations, notifications, and account settings.",
       integrationsTab: "Integrations",
       notificationsTab: "Notifications",
-      profileCardTitle: "Profile",
-      profileCardDesc: "Update your personal information.",
-      nameLabel: "Full Name",
-      emailLabel: "Email Address",
-      saveButton: "Save Changes",
-      profileUpdateToast: "Profile Updated",
-      profileUpdateToastDesc: "Your new details have been saved.",
+      accountTab: "Account",
       integrationsCardTitle: "Integrations",
       integrationsCardDesc: "Connect Ààbò with your other accounts.",
       whatsapp: "WhatsApp",
@@ -171,21 +188,20 @@ export const translations = {
       backupReports: "Backup Reports",
       backupReportsDesc: "Get notified when backups complete or fail.",
       weeklySummary: "Weekly Summary",
-      weeklySummaryDesc: "Receive a summary of your protection status."
+      weeklySummaryDesc: "Receive a summary of your protection status.",
+      accountCardTitle: "Account Management",
+      accountCardDesc: "Manage your password and other account actions.",
+      changePasswordButton: "Change Password",
+      deleteAccountTitle: "Delete Account",
+      deleteAccountDesc: "Permanently delete your account and all associated data. This action cannot be undone.",
+      deleteAccountButton: "Delete My Account"
     },
     pidgin: {
       title: "Settings",
-      description: "Arrange your account and how you like am.",
-      profileTab: "Yourself",
+      description: "Arrange join-join, tori-tori, and account mata.",
       integrationsTab: "Join-Join",
       notificationsTab: "Tori-Tori",
-      profileCardTitle: "Yourself",
-      profileCardDesc: "Change your personal tori.",
-      nameLabel: "Your Full Name",
-      emailLabel: "Your Email Address",
-      saveButton: "Save Am",
-      profileUpdateToast: "Profile Don Set",
-      profileUpdateToastDesc: "We don save your new tori.",
+      accountTab: "Account",
       integrationsCardTitle: "Join-Join",
       integrationsCardDesc: "Join Ààbò with your other accounts.",
       whatsapp: "WhatsApp",
@@ -201,7 +217,13 @@ export const translations = {
       backupReports: "Save-Save Tori",
       backupReportsDesc: "Know if your save work or e fail.",
       weeklySummary: "Weekly Kasala Report",
-      weeklySummaryDesc: "Get tori on how your protection be every week."
+      weeklySummaryDesc: "Get tori on how your protection be every week.",
+      accountCardTitle: "Arrange Account",
+      accountCardDesc: "Arrange your password and other account mata.",
+      changePasswordButton: "Change Password",
+      deleteAccountTitle: "Delete Account",
+      deleteAccountDesc: "Delete your account and all your data forever. You no fit reverse am.",
+      deleteAccountButton: "Delete My Account"
     }
   }
 };

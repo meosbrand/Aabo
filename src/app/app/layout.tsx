@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -10,6 +11,7 @@ import {
   LifeBuoy,
   LogOut,
   Languages,
+  User,
 } from "lucide-react";
 import { AaboLogo } from "@/components/aabo-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   SidebarProvider,
@@ -56,8 +59,12 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     { href: "/app/backup", icon: FileClock, label: t.sidebar[language].backup },
     { href: "/app/copilot", icon: Bot, label: t.sidebar[language].copilot },
     { href: "/app/panic", icon: AlertTriangle, label: t.sidebar[language].panic },
-    { href: "/app/settings", icon: Settings, label: t.sidebar[language].settings },
   ];
+
+  const bottomMenuItems = [
+    { href: "/app/profile", icon: User, label: t.sidebar[language].profile },
+    { href: "/app/settings", icon: Settings, label: t.sidebar[language].settings },
+  ]
 
   return (
     <SidebarProvider>
@@ -74,7 +81,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           <SidebarMenu>
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
+                <Link href={item.href} className="w-full">
                   <SidebarMenuButton
                     isActive={pathname.startsWith(item.href)}
                     tooltip={{children: item.label}}
@@ -89,15 +96,20 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
         </SidebarContent>
         <SidebarFooter>
            <SidebarMenu>
-              <SidebarMenuItem>
-                 <Link href="#">
-                    <SidebarMenuButton tooltip={{children: t.sidebar[language].support}}>
-                        <LifeBuoy/>
-                        <span>{t.sidebar[language].support}</span>
+              {bottomMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href} className="w-full">
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(item.href)}
+                      tooltip={{children: item.label}}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-               <SidebarMenuItem>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+              <SidebarMenuItem>
                  <Link href="/login">
                     <SidebarMenuButton tooltip={{children: t.sidebar[language].logout}}>
                         <LogOut />
@@ -141,11 +153,19 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/app/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/app/settings">Settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem>Support</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/login">Logout</Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
