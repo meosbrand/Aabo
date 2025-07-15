@@ -169,3 +169,11 @@ export default function OnboardingPage() {
                 ) : (
                     <Button asChild>
                        <Link href="/app/dashboard">Go to Dashboard</Link>
+                    </Button>
+                )}
+            </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

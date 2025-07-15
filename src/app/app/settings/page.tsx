@@ -172,4 +172,12 @@ export default function SettingsPage() {
                         <Label htmlFor="weekly-summary" className="font-semibold">{T.weeklySummary}</Label>
                         <p className="text-sm text-muted-foreground">{T.weeklySummaryDesc}</p>
                     </div>
-                    <Switch id="weekly-summary"
+                    <Switch id="weekly-summary" />
+                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

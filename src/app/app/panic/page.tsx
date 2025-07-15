@@ -60,4 +60,5 @@ export default function PanicPage() {
         </CardContent>
       </Card>
     </div>
-  
+  );
+}
