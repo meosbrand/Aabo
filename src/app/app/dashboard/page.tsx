@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ const recentActivityEn = [
     { icon: <User className="w-5 h-5 text-blue-500" />, text: "Profile updated successfully.", time: "2 min ago" },
     { icon: <FileClock className="w-5 h-5 text-green-500" />, text: "Weekly backup completed.", time: "1 hour ago" },
     { icon: <AlertCircle className="w-5 h-5 text-yellow-500" />, text: "Unusual sign-in attempt blocked.", time: "3 hours ago" },
-    { icon: <Bot className="w-5 h-5 text-purple-500" />, text: "Asked Co-Pilot about phishing.", time: "1 day ago" },
+    { icon: <Bot className="w-5 h-5 text-purple-500" />, text: "Asked The Digital Elder about phishing.", time: "1 day ago" },
 ];
 
 /**

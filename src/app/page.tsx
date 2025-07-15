@@ -17,7 +17,7 @@ const features = [
   },
   {
     icon: <Bot className="w-8 h-8 text-primary" />,
-    title: "Ààbò Co-Pilot",
+    title: "Ààbò The Digital Elder",
     description: "Your personal AI security assistant, ready to answer any question.",
   },
   {

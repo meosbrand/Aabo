@@ -4,7 +4,7 @@ export const translations = {
     en: {
       dashboard: "Dashboard",
       backup: "Backup Center",
-      copilot: "Ààbò Co-Pilot",
+      copilot: "Ààbò The Digital Elder",
       panic: "Panic Trigger",
       settings: "Settings",
       support: "Support",
@@ -27,7 +27,7 @@ export const translations = {
       protectionStatus: "Protection Status",
       protectionDesc: "Your digital shield is 90% active.",
       protectionHint: "Complete your profile to reach 100%.",
-      copilotTitle: "Ààbò Co-Pilot",
+      copilotTitle: "Ààbò The Digital Elder",
       copilotDesc: "Have a security question? Just ask.",
       copilotButton: "Start Chat",
       recentActivity: "Recent Activity",
@@ -106,7 +106,7 @@ export const translations = {
   },
   copilot: {
       en: {
-          title: "Ààbò Co-Pilot",
+          title: "Ààbò The Digital Elder",
           description: "Your personal AI security assistant.",
           placeholder: "Type your security question...",
           initialPrompt: "Ask me anything!",
