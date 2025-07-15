@@ -12,6 +12,9 @@ import { ArrowLeft, Check, Mail, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
+/**
+ * Configuration for the steps in the onboarding process.
+ */
 const steps = [
   {
     title: "Welcome to Ààbò!",
@@ -27,21 +30,39 @@ const steps = [
   }
 ];
 
+/**
+ * Renders the multi-step onboarding page for new users.
+ * It guides the user through setting up their name and connecting accounts.
+ * Uses Framer Motion for smooth transitions between steps.
+ * @returns {JSX.Element} The OnboardingPage component.
+ */
 export default function OnboardingPage() {
+  // State for the current step in the onboarding flow.
   const [currentStep, setCurrentStep] = useState(0);
+  // State for the user's name, collected in the first step.
   const [name, setName] = useState('');
+  // State to control the animation direction (forward or backward).
   const [direction, setDirection] = useState(1);
   const progress = ((currentStep + 1) / steps.length) * 100;
 
+  /**
+   * Moves to the next step in the onboarding process.
+   */
   const nextStep = () => {
     setDirection(1);
     setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
   }
+  /**
+   * Moves to the previous step in the onboarding process.
+   */
   const prevStep = () => {
     setDirection(-1);
     setCurrentStep(prev => Math.max(prev - 1, 0));
   }
 
+  /**
+   * Animation variants for the step content transitions.
+   */
   const variants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 500 : -500,
@@ -88,6 +109,7 @@ export default function OnboardingPage() {
                         }}
                         className="absolute inset-0 flex flex-col justify-center px-6"
                     >
+                        {/* Step 0: Welcome and Name Input */}
                         {currentStep === 0 && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -101,6 +123,7 @@ export default function OnboardingPage() {
                                 </div>
                             </div>
                         )}
+                        {/* Step 1: Connect Accounts */}
                         {currentStep === 1 && (
                             <div className="space-y-4">
                                 <Button variant="outline" className="w-full justify-start h-14 text-left">
@@ -119,6 +142,7 @@ export default function OnboardingPage() {
                                 </Button>
                             </div>
                         )}
+                        {/* Step 2: Completion */}
                         {currentStep === 2 && (
                             <div className="text-center">
                             <div className="flex justify-center items-center">
@@ -132,6 +156,7 @@ export default function OnboardingPage() {
                     </motion.div>
                 </AnimatePresence>
             </CardContent>
+            {/* Navigation buttons */}
             <div className="flex items-center justify-between p-6">
                 <Button variant="ghost" onClick={prevStep} disabled={currentStep === 0}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -144,11 +169,3 @@ export default function OnboardingPage() {
                 ) : (
                     <Button asChild>
                        <Link href="/app/dashboard">Go to Dashboard</Link>
-                    </Button>
-                )}
-            </div>
-        </Card>
-        </div>
-    </div>
-  );
-}

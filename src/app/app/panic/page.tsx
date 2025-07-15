@@ -6,17 +6,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ShieldAlert, MessageSquareHeart, PowerOff, Phone } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
+/**
+ * Renders the Panic Trigger page.
+ * This page provides users with immediate actions to take in an emergency,
+ * such as locking accounts or contacting support.
+ * @returns {JSX.Element} The PanicPage component.
+ */
 export default function PanicPage() {
+  // Retrieves language context for translations.
   const { language, t } = useLanguage();
+  // Gets the translated strings for the current language.
   const T = t.panic[language];
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
+        {/* Page Header */}
         <div className="text-center">
             <h1 className="text-3xl font-bold">{T.title}</h1>
             <p className="text-muted-foreground">{T.description}</p>
         </div>
       
+      {/* Main Panic Actions Card */}
       <Card className="w-full max-w-2xl mt-8 shadow-lg">
         <CardHeader className="text-center">
           <ShieldAlert className="w-16 h-16 mx-auto text-destructive" />
@@ -26,11 +36,13 @@ export default function PanicPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6 p-8">
+          {/* Main "Activate Panic Mode" button */}
           <Button variant="destructive" size="lg" className="h-24 w-full text-2xl font-bold rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
             <ShieldAlert className="mr-4 w-8 h-8" />
             {T.mainButton}
           </Button>
 
+          {/* Secondary action buttons */}
           <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <Button variant="secondary" className="h-20 flex-col gap-1">
               <Phone className="w-6 h-6" />
@@ -48,5 +60,4 @@ export default function PanicPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
+  

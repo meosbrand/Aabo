@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -37,10 +36,21 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 
+/**
+ * The main content layout for the authenticated part of the application.
+ * It includes the collapsible sidebar, top header bar, and the main content area.
+ * It uses the LanguageContext to provide translations.
+ * @param {{ children: React.ReactNode }} props - The component props.
+ * @returns {JSX.Element} The AppLayoutContent component.
+ */
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
 
+  /**
+   * The navigation items for the sidebar menu.
+   * Uses the translation context to get the correct labels.
+   */
   const menuItems = [
     { href: "/app/dashboard", icon: LayoutDashboard, label: t.sidebar[language].dashboard },
     { href: "/app/backup", icon: FileClock, label: t.sidebar[language].backup },
@@ -99,12 +109,15 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
+        {/* Header bar at the top of the content area */}
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
+          {/* Hamburger menu trigger for mobile */}
           <SidebarTrigger className="md:hidden" />
           <div className="w-full flex-1">
-            {/* You can add a page title here if needed */}
+            {/* This space can be used for a page title if needed */}
           </div>
           <div className="flex items-center gap-4">
+            {/* Language switcher dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -116,6 +129,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 <DropdownMenuItem onClick={() => setLanguage('pidgin')}>Pidgin</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* User profile dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="icon" className="rounded-full">
@@ -136,6 +150,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             </DropdownMenu>
           </div>
         </header>
+        {/* Main content area where page content is rendered */}
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </main>
@@ -144,6 +159,13 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+/**
+ * The root layout for the authenticated part of the app ('/app/**').
+ * It wraps the main layout content with the LanguageProvider to enable
+ * language switching functionality across all nested pages.
+ * @param {{ children: React.ReactNode }} props - The component props.
+ * @returns {JSX.Element} The AppLayout component.
+ */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>

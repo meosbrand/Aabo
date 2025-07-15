@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { FileClock, HardDrive, PlusCircle } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
+/**
+ * Represents the structure of a single backup history entry.
+ */
 const backupHistory = [
   { date: "2023-10-26", type: "Full System", size: "5.2 GB", status: "Completed", statusPidgin: "Done Wella" },
   { date: "2023-10-19", type: "Full System", size: "5.1 GB", status: "Completed", statusPidgin: "Done Wella" },
@@ -17,12 +20,21 @@ const backupHistory = [
   { date: "2023-10-05", type: "Full System", size: "4.8 GB", status: "Completed", statusPidgin: "Done Wella" },
 ];
 
+/**
+ * Renders the Backup Center page.
+ * This page displays the current backup status, storage usage, and a history of past backups.
+ * It supports both English and Pidgin languages.
+ * @returns {JSX.Element} The BackupPage component.
+ */
 export default function BackupPage() {
+    // Retrieves language context for translations.
     const { language, t } = useLanguage();
+    // Gets the translated strings for the current language.
     const T = t.backup[language];
 
   return (
     <div className="space-y-8">
+      {/* Header section with page title and New Backup button */}
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-3xl font-bold">{T.title}</h1>
@@ -35,6 +47,7 @@ export default function BackupPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Backup Status Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileClock className="text-primary"/>{T.statusTitle}</CardTitle>
@@ -46,6 +59,7 @@ export default function BackupPage() {
             <Button variant="outline" className="mt-4">{T.manualBackup}</Button>
           </CardContent>
         </Card>
+        {/* Storage Usage Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><HardDrive className="text-primary"/>{T.storageTitle}</CardTitle>
@@ -62,6 +76,7 @@ export default function BackupPage() {
         </Card>
       </div>
 
+      {/* Backup History Table */}
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>{T.historyTitle}</CardTitle>
@@ -85,6 +100,7 @@ export default function BackupPage() {
                   <TableCell>{backup.type}</TableCell>
                   <TableCell>{backup.size}</TableCell>
                   <TableCell>
+                    {/* Badge color and text changes based on status and language */}
                     <Badge variant={backup.status === "Completed" ? "default" : "destructive"} className={backup.status === "Completed" ? "bg-green-600" : ""}>
                       {language === 'pidgin' ? backup.statusPidgin : backup.status}
                     </Badge>
@@ -94,11 +110,3 @@ export default function BackupPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-

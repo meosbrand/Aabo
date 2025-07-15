@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AaboLogo } from "@/components/aabo-logo";
 import { ShieldCheck, Bot, FileClock, AlertTriangle, Settings, MessageCircle } from "lucide-react";
 
+/**
+ * An array of feature objects to be displayed on the landing page.
+ */
 const features = [
   {
     icon: <ShieldCheck className="w-8 h-8 text-primary" />,
@@ -38,9 +41,15 @@ const features = [
   },
 ];
 
+/**
+ * Renders the public landing page for the application.
+ * It showcases the app's features, value proposition, and provides navigation to log in or sign up.
+ * @returns {JSX.Element} The LandingPage component.
+ */
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      {/* Header section with logo and navigation */}
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <AaboLogo className="h-8 w-8 text-primary" />
@@ -57,6 +66,7 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-grow">
+        {/* Hero Section */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-extrabold text-foreground tracking-tight">
@@ -74,6 +84,7 @@ export default function LandingPage() {
               </Button>
             </div>
           </div>
+          {/* Dashboard Preview Image */}
           <div className="mt-16 max-w-5xl mx-auto">
              <Image
                 src="https://placehold.co/1200x600.png"
@@ -86,6 +97,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Features Section */}
         <section id="features" className="py-20 md:py-32 bg-secondary">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto">
@@ -112,6 +124,7 @@ export default function LandingPage() {
           </div>
         </section>
         
+        {/* Call to Action Section */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
             <div className="bg-primary text-primary-foreground rounded-2xl p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-8">
                 <div className="lg:w-1/2 text-center lg:text-left">
@@ -128,6 +141,7 @@ export default function LandingPage() {
 
       </main>
 
+      {/* Footer Section */}
       <footer className="bg-secondary">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
@@ -137,9 +151,4 @@ export default function LandingPage() {
           <div className="flex gap-4">
             <Link href="#" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
             <Link href="#" className="text-sm text-muted-foreground hover:text-primary">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
+          

@@ -15,17 +15,31 @@ import { Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 
+/**
+ * Zod schema for validating the profile form.
+ */
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
 });
 
+/**
+ * Type definition for the profile form values, inferred from the Zod schema.
+ */
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+/**
+ * Renders the Settings page.
+ * This page contains tabs for managing Profile, Integrations, and Notifications.
+ * @returns {JSX.Element} The SettingsPage component.
+ */
 export default function SettingsPage() {
+  // Retrieves language context for translations.
   const { language, t } = useLanguage();
+  // Gets the translated strings for the current language.
   const T = t.settings[language];
 
+  // Initializes the form using react-hook-form and Zod for validation.
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -34,6 +48,10 @@ export default function SettingsPage() {
     },
   });
 
+  /**
+   * Handles form submission for the profile tab.
+   * @param {ProfileFormValues} data - The validated form data.
+   */
   function onSubmit(data: ProfileFormValues) {
     toast({
       title: T.profileUpdateToast,
@@ -43,10 +61,12 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">{T.title}</h1>
         <p className="text-muted-foreground">{T.description}</p>
       </div>
+      {/* Tabbed interface for different settings categories */}
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
           <TabsTrigger value="profile">{T.profileTab}</TabsTrigger>
@@ -54,6 +74,7 @@ export default function SettingsPage() {
           <TabsTrigger value="notifications">{T.notificationsTab}</TabsTrigger>
         </TabsList>
 
+        {/* Profile Tab */}
         <TabsContent value="profile">
           <Card className="shadow-lg">
             <CardHeader>
@@ -96,6 +117,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* Integrations Tab */}
         <TabsContent value="integrations">
           <Card className="shadow-lg">
             <CardHeader>
@@ -123,6 +145,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* Notifications Tab */}
         <TabsContent value="notifications">
           <Card className="shadow-lg">
             <CardHeader>
@@ -149,12 +172,4 @@ export default function SettingsPage() {
                         <Label htmlFor="weekly-summary" className="font-semibold">{T.weeklySummary}</Label>
                         <p className="text-sm text-muted-foreground">{T.weeklySummaryDesc}</p>
                     </div>
-                    <Switch id="weekly-summary" />
-                </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+                    <Switch id="weekly-summary"

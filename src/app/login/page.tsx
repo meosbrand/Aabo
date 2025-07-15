@@ -6,6 +6,11 @@ import { Label } from '@/components/ui/label';
 import { AaboLogo } from '@/components/aabo-logo';
 import { Separator } from '@/components/ui/separator';
 
+/**
+ * A simple Google icon component.
+ * @param {React.SVGProps<SVGSVGElement>} props - SVG properties.
+ * @returns {JSX.Element} The Google icon SVG.
+ */
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
       <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -14,6 +19,11 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     )
   }
 
+/**
+ * Renders the Login page for the application.
+ * It includes a form for email/password login and an option for Google sign-in.
+ * @returns {JSX.Element} The LoginPage component.
+ */
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
@@ -29,6 +39,7 @@ export default function LoginPage() {
             <CardDescription>Sign in to access your Digital Shield.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Email and Password form */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" required />
@@ -43,12 +54,14 @@ export default function LoginPage() {
               <Input id="password" type="password" required />
             </div>
             <Button type="submit" className="w-full" asChild>
+                {/* Link to dashboard for demo purposes */}
                 <Link href="/app/dashboard">Sign In</Link>
             </Button>
             <div className="relative my-4">
                 <Separator />
                 <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-card px-2 text-sm text-muted-foreground">OR</span>
             </div>
+            {/* Google Sign-in button */}
             <Button variant="outline" className="w-full">
               <GoogleIcon className="mr-2 h-4 w-4" />
               Sign in with Google
