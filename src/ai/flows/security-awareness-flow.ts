@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -16,7 +17,7 @@ import {z} from 'genkit';
 /**
  * Defines the schema for the input to the security awareness chatbot flow.
  */
-const SecurityAwarenessInputSchema = z.object({
+export const SecurityAwarenessInputSchema = z.object({
   /** The user's question about security. Should be concise. */
   query: z.string().describe('The user query about security. Be concise.'),
   /** The desired language for the response. Defaults to 'en' (English). */
@@ -52,45 +53,27 @@ export async function securityAwarenessChatbot(input: SecurityAwarenessInput): P
 }
 
 /**
- * The prompt template for the English-speaking AI assistant.
- * It instructs the AI to be warm, encouraging, and to avoid jargon.
- */
-const englishPrompt = `You are Ààbò The Digital Elder, a friendly and helpful AI security assistant. Your personality is warm, encouraging, and approachable. You avoid jargon and explain security concepts in a simple, conversational way.
-
-Your goal is to provide clear, actionable advice that empowers the user to feel safer online. Start your response in a friendly tone and then provide the security advice.
-
-User Query: {{{query}}}`;
-
-/**
- * The prompt template for the Nigerian Pidgin-speaking AI assistant.
- * It instructs the AI to be witty, playful, and use authentic Nigerian Pidgin English.
- */
-const pidginPrompt = `You are Ààbò The Digital Baba, a sharp and funny AI security assistant from Nigeria. Your personality is witty, playful, and you speak authentic Nigerian Pidgin English. You make security advice sound like a gist with a friend, using plenty of humor, local slang, and analogies.
-
-Your goal is to give clear, sharp advice that makes the user feel like a security boss. Start your response with a funny greeting, then give the advice like you're sharing a hot gist.
-
-User Query: {{{query}}}`;
-
-/**
  * A Genkit prompt definition for the security awareness chatbot.
- * It takes the user's query and a pre-selected prompt template as input.
+ * It uses Handlebars templating to conditionally select the personality and language based on the input.
  */
 const prompt = ai.definePrompt({
   name: 'securityAwarenessPrompt',
-  input: {
-    schema: z.object({
-      query: z.string(),
-      prompt: z.string(),
-    })
-  },
+  input: {schema: SecurityAwarenessInputSchema},
   output: {schema: SecurityAwarenessOutputSchema},
-  prompt: `{{{prompt}}}`,
+  prompt: `
+    {{#if (eq language "pidgin")}}
+    You are Ààbò The Digital Baba, a sharp and funny AI security assistant from Nigeria. Your personality is witty, playful, and you speak authentic Nigerian Pidgin English. You make security advice sound like a gist with a friend, using plenty of humor, local slang, and analogies. Your goal is to give clear, sharp advice that makes the user feel like a security boss. Start your response with a funny greeting, then give the advice like you're sharing a hot gist.
+    {{else}}
+    You are Ààbò The Digital Elder, a friendly and helpful AI security assistant. Your personality is warm, encouraging, and approachable. You avoid jargon and explain security concepts in a simple, conversational way. Your goal is to provide clear, actionable advice that empowers the user to feel safer online. Start your response in a friendly tone and then provide the security advice.
+    {{/if}}
+
+    User Query: {{{query}}}
+  `,
 });
 
 /**
  * The main Genkit flow for the security awareness chatbot.
- * It selects the appropriate prompt (English or Pidgin) based on the input language,
- * then calls the defined prompt to generate the security advice.
+ * It directly calls the prompt with the user's input, letting the template handle the logic.
  */
 const securityAwarenessFlow = ai.defineFlow(
   {
@@ -99,17 +82,8 @@ const securityAwarenessFlow = ai.defineFlow(
     outputSchema: SecurityAwarenessOutputSchema,
   },
   async (input) => {
-    // Determine which prompt to use based on the user's language selection.
-    const selectedPrompt = input.language === 'pidgin' ? pidginPrompt : englishPrompt;
-    
-    // Replace the query placeholder in the selected prompt.
-    const populatedPrompt = selectedPrompt.replace('{{{query}}}', input.query);
-    
-    // Invoke the prompt with the populated content.
-    const {output} = await prompt({
-      query: input.query,
-      prompt: populatedPrompt,
-    });
+    // Invoke the prompt with the user's input.
+    const {output} = await prompt(input);
     
     // Return the generated output.
     return output!;
