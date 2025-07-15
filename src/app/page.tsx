@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,7 @@ export default function LandingPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground">{feature.description}</p>
+
                   </CardContent>
                 </Card>
               ))}
@@ -151,4 +153,9 @@ export default function LandingPage() {
           <div className="flex gap-4">
             <Link href="#" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
             <Link href="#" className="text-sm text-muted-foreground hover:text-primary">Terms of Service</Link>
-          
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
