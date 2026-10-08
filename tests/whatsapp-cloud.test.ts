@@ -15,6 +15,8 @@ import { __setEngineForTests } from '@/server/engine-loader';
 import { orgActor, type OrgActor } from '@/server/org-auth';
 import { rateLimit } from '@/server/rate-limit-store';
 import { runRetention } from '@/server/retention';
+import { lookupSummary } from '@/server/lookup';
+import { reportScan, runScan } from '@/server/scans';
 import type { ConnectionSecrets, ConnectionView } from '@/lib/developer-types';
 import { createFakeEngine } from './support/fake-engine';
 
@@ -299,6 +301,12 @@ describe('connecting numbers', () => {
     expect(reports.length).toBeGreaterThan(0);
     expect(reports.every((r) => r.trust === 0 && r.status === 'PENDING')).toBe(true);
     expect(await prisma.indicator.findUnique({ where: { type_value: { type: 'phone', value: '+2349012345678' } } })).toBeNull();
+    // Repeating "report" files nothing new, and unreviewed reports are not public evidence.
+    const before = await prisma.report.count();
+    await postMeta(key, metaPayload('111222333', [text('rep-3', 'report', from), text('rep-4', 'report', from)]));
+    await processPendingFor(meta.connection.id);
+    expect(await prisma.report.count()).toBe(before);
+    expect((await lookupSummary('09012345678'))?.reports).toBe(0);
   });
 
   it('continues a quiz across separate deliveries and respects the Co-pilot switch', async () => {
@@ -317,6 +325,54 @@ describe('connecting numbers', () => {
     await postMeta(key, metaPayload('111222333', [text('q-3', 'How do I protect my WhatsApp?', from)]));
     await processPendingFor(meta.connection.id);
     expect(JSON.parse(sent.at(-1)!.body).text.body).toMatch(/I can check messages/);
+  });
+
+  it('writes nothing for unauthenticated requests', async () => {
+    const rows = await prisma.rateLimit.count();
+    for (let i = 0; i < 5; i++) {
+      const res = await POST(req(`https://aabo.test/api/webhooks/whatsapp/meta/${'z'.repeat(31)}${i}`, { method: 'POST', body: '{}', ip: `9.9.9.${i}` }), ctx('meta', `${'z'.repeat(31)}${i}`));
+      expect(res.status).toBe(401);
+    }
+    expect(await prisma.rateLimit.count()).toBe(rows);
+  });
+
+  it('asks for the image again when it cannot be downloaded, without using a check', async () => {
+    const key = keyOf(meta.secrets.webhookUrl);
+    const from = '2348088880001';
+    await postMeta(key, metaPayload('111222333', [{ from, id: 'img-missing', timestamp: '1', type: 'image', image: { id: 'no-such-media', mime_type: 'image/png' } }]));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await processPendingFor(meta.connection.id);
+    vi.restoreAllMocks();
+    const reply = sent.filter((s) => JSON.parse(s.body).to === from).at(-1);
+    expect(JSON.parse(reply!.body).text.body).toMatch(/couldn't open that image/);
+    const identity = await prisma.channelIdentity.findFirstOrThrow({ where: { externalId: `c:${meta.connection.id}:${from}` } });
+    expect(await prisma.scan.count({ where: { identityId: identity.id } })).toBe(0);
+  });
+
+  it('stops processing at once when Developer Mode is switched off', async () => {
+    const key = keyOf(meta.secrets.webhookUrl);
+    await postMeta(key, metaPayload('111222333', [text('late-1', 'hello', '2348011119999')]));
+    const event = await prisma.inboundEvent.findFirstOrThrow({ where: { providerMessageId: 'late-1' } });
+    await prisma.organization.update({ where: { id: orgId }, data: { developerMode: false } });
+    await processPendingFor(meta.connection.id);
+    expect((await prisma.inboundEvent.findUniqueOrThrow({ where: { id: event.id } })).status).toBe('skipped');
+    await prisma.organization.update({ where: { id: orgId }, data: { developerMode: true } });
+    invalidateConnection();
+  });
+
+  it('gives the check back when the business is out of checks for the day', async () => {
+    await updateConnection(admin, meta.connection.id, { orgDailyCap: 1 });
+    invalidateConnection();
+    await prisma.rateLimit.deleteMany({ where: { key: `orgchecks:${orgId}` } });
+    const key = keyOf(meta.secrets.webhookUrl);
+    await postMeta(key, metaPayload('111222333', [text('cap-1', 'Is this real? http://cap-check-one.example', '2348000001111')]));
+    await processPendingFor(meta.connection.id);
+    await postMeta(key, metaPayload('111222333', [text('cap-2', 'Is this real? http://cap-check-two.example', '2348000002222')]));
+    await processPendingFor(meta.connection.id);
+    const second = await prisma.channelIdentity.findFirstOrThrow({ where: { externalId: `c:${meta.connection.id}:2348000002222` } });
+    expect(second.checksToday).toBe(0);
+    await updateConnection(admin, meta.connection.id, { orgDailyCap: 1000 });
+    invalidateConnection();
   });
 
   it('downloads images through the provider', async () => {
@@ -413,6 +469,24 @@ describe('tips on organisation numbers', () => {
     expect(r.sent).toBe(1);
     expect(sent.filter((s) => s.path.endsWith('/777888999/messages')).map((s) => JSON.parse(s.body).to)).toEqual(['2348000000001']);
     expect((await runTips({}, { gapMs: 0, now: later })).sent).toBe(0); // once a day
+
+    // Next day the provider rejects the organisation's token: stop without blaming recipients.
+    failNextSend = { status: 401, body: { error: { code: 190 } } };
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await prisma.channelIdentity.updateMany({ where: { connectionId: res.connection.id }, data: { lastInboundAt: new Date(now + 86_400_000) } });
+    await runTips({}, { gapMs: 0, now: now + 86_400_000 + 60_000 });
+    vi.restoreAllMocks();
+    const people = await prisma.channelIdentity.findMany({ where: { connectionId: res.connection.id } });
+    expect(people.every((p) => p.tipsOptIn)).toBe(true);
+    expect((await prisma.channelConnection.findUniqueOrThrow({ where: { id: res.connection.id } })).lastError).toBe('auth_failed');
+  });
+
+  it('reports exact links, never whole shared platforms', async () => {
+    const { scanId } = await runScan({ channel: 'web', text: 'claim at https://bit.ly/free-cash-now and https://my-shop-phish.vercel.app/login' }, {});
+    await reportScan(scanId, { userId: 'wa-Bola Fabrics' });
+    const reported = await prisma.report.findMany({ where: { scanId }, select: { type: true, value: true } });
+    expect(reported.filter((r) => r.type === 'domain')).toEqual([]);
+    expect(reported.map((r) => r.value)).toEqual(expect.arrayContaining(['https://bit.ly/free-cash-now', 'https://my-shop-phish.vercel.app/login']));
   });
 });
 

@@ -37,10 +37,15 @@ describe('scan storage', () => {
 describe('community reports (Truecaller layer)', () => {
   it('aggregates reports into indicators visible to lookups', async () => {
     const text = 'Your Opay wallet is blocked. Call 0909 111 2233 now and pay the reactivation fee into 2233445566.';
-    for (let i = 0; i < 2; i++) {
+    await prisma.user.create({ data: { id: 'u-test-2', name: 'Bayo', email: 'bayo@test.ng' } });
+    for (const [i, reporter] of [userId, 'u-test-2'].entries()) {
       const { scanId } = await runScan({ text: `${text} (${i})`, channel: 'web' }, { storeExcerpt: true });
-      await reportScan(scanId, { userId });
+      await reportScan(scanId, { userId: reporter });
+      await reportScan(scanId, { userId: reporter }); // repeats from one person count once
     }
+    // Anonymous reports wait for review and are not counted.
+    const { scanId: anon } = await runScan({ text: `${text} (anon)`, channel: 'web' }, { storeExcerpt: true });
+    await reportScan(anon, {});
     const phone = await prisma.indicator.findUnique({ where: { type_value: { type: 'phone', value: '+2349091112233' } } });
     expect(phone?.reports).toBe(2);
     const look = await lookupSummary('09091112233');

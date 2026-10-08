@@ -102,6 +102,7 @@ export async function setDeveloperMode(actor: OrgActor | null, on: boolean): Pro
   });
   await audit(actor, on ? 'developer_mode.on' : 'developer_mode.off');
   invalidateOrgSettings(actor.orgId);
+  invalidateConnection();
   return { ok: true };
 }
 
@@ -145,9 +146,41 @@ async function storedSecret(orgId: string, kind: IntegrationKind): Promise<strin
   }
 }
 
+/** Where a set of AI settings sends requests (provider + URL origin). */
+function aiDestination(cfg: { provider?: unknown; baseURL?: unknown }): string {
+  const provider = isAiProviderId(cfg.provider) ? cfg.provider : 'custom';
+  const url = (typeof cfg.baseURL === 'string' && cfg.baseURL.trim()) || AI_PRESETS[provider].baseURL;
+  try {
+    return `${provider}|${new URL(url).origin}`;
+  } catch {
+    return `${provider}|${url}`;
+  }
+}
+
+/**
+ * The stored key, but only for the provider and address it was entered for: a key never follows a
+ * change of destination unless it is typed again (so nobody can redirect someone else's key).
+ */
+async function reusableKey(orgId: string, input: AiIntegrationInput): Promise<DevResult<{ key: string }>> {
+  const row = await prisma.orgIntegration.findUnique({ where: { orgId_kind: { orgId, kind: 'ai' } }, select: { config: true, secret: true } });
+  if (!row?.secret) return { ok: true, key: '' };
+  if (aiDestination((row.config ?? {}) as Record<string, unknown>) !== aiDestination(input)) {
+    return fail('invalid', 'Enter the API key again when you change the provider or the API address.');
+  }
+  return { ok: true, key: (await storedSecret(orgId, 'ai')) ?? '' };
+}
+
 /** Build (and validate) the BYOK configuration a draft describes. */
 async function byokConfig(orgId: string, input: AiIntegrationInput): Promise<DevResult<{ cfg: AiConfig; key: string }>> {
-  const key = input.clearKey ? '' : input.apiKey?.trim() || (await storedSecret(orgId, 'ai')) || '';
+  let key = '';
+  if (!input.clearKey) {
+    if (input.apiKey?.trim()) key = input.apiKey.trim();
+    else {
+      const stored = await reusableKey(orgId, input);
+      if (!stored.ok) return stored;
+      key = stored.key;
+    }
+  }
   try {
     const cfg = buildAiConfig({ ...aiSettingsFrom(input), apiKey: key } as never, 'byok', orgId);
     if (!cfg.allowPrivate && !cfg.baseURL.startsWith('https://')) return fail('invalid', 'The base URL must start with https://');

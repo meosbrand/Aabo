@@ -51,6 +51,7 @@ const MSG = {
   seen: B('👥 {n} people checked this same message this month.', '👥 {n} people don check this same message this month.'),
   error: B('Sorry, something went wrong while checking. Please try again in a moment.', 'Sorry o, something spoil as I dey check. Abeg try again small time.'),
   forwardIt: B('Forward the message itself to me (or paste it here) and I will check it.', 'Forward the message itself give me (or paste am here) make I check am.'),
+  mediaFailed: B("I couldn't open that image. Please send it again, or paste the message text.", 'I no fit open that picture. Abeg send am again, or paste the message text.'),
   checksOnly: B('I can check messages, links, numbers and screenshots here. Forward me anything you are not sure about.', 'For here, I dey check messages, links, numbers and screenshots. Forward anything wey you no trust give me.'),
 };
 
@@ -157,6 +158,8 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
         await services.recordQuiz(identity, q.id, correct);
         return reply(adapter, msg.chatId, `${correct ? MSG.quizCorrect[lang] : MSG.quizWrong[lang]} ${q.explanation[lang]}\n\n${MSG.quizNext[lang]}`);
       }
+
+      if (msg.unreadableMedia && !text && !msg.image && !msg.document) return reply(adapter, msg.chatId, MSG.mediaFailed[lang]);
 
       // Media and contacts are always checked.
       if (msg.document || msg.image) return runCheck(adapter, msg, identity);

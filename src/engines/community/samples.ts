@@ -33,6 +33,8 @@ export const COMMUNITY_SAMPLES: LabelledSample[] = [
   { label: 'scam', category: 'investment', text: 'I saw your number in a business group. I trade forex for clients, 30% weekly profit guaranteed. Start with just ₦20,000.' },
   { label: 'scam', minLevel: 'LIKELY_SCAM', text: 'Police: there is a warrant for your arrest over a fraud case. Transfer ₦150,000 bail to officer account 2088776655 now now.' },
 
+  { label: 'scam', category: 'account_takeover', minLevel: 'LIKELY_SCAM', text: 'Your token has expired. Kindly share the 6-digit code sent to your phone with our agent to reactivate it.' },
+
   // --- legitimate ---
   { label: 'ham', text: 'Acct: 01****89 Amt: NGN25,000.00 CR Desc: TRF FROM ADEBAYO STORES Avail Bal: NGN143,220.50 Date: 12-Mar-2026' },
   { label: 'ham', text: '<#> 739104 is your verification code for Opay. Do not share this code with anyone.' },
@@ -58,4 +60,19 @@ export const COMMUNITY_SAMPLES: LabelledSample[] = [
   { label: 'ham', text: 'The police station said we should come and write a statement about the stolen generator tomorrow.' },
   { label: 'ham', text: "Please don't share your OTP with anyone, even if they claim to be from our bank. — Kuda" },
   { label: 'ham', text: "Payment reminder: your rent of ₦600,000 is due on 1st April. Kindly pay into the landlord's usual account." },
+  { label: 'ham', text: 'Your OTP is 482910. GTBank will never ask you to share your OTP or PIN.' },
+  { label: 'ham', text: 'Dear Customer, your OTP is 123456. It expires in 5 minutes. Zenith Bank will never ask you to share your OTP, PIN or password.' },
+  { label: 'ham', text: 'Never disclose or share your OTP with anyone, not even bank staff.' },
+  { label: 'ham', text: 'Send me the tracking code for my parcel, please.' },
+  { label: 'ham', text: 'Kindly share the discount code with your customers this weekend.' },
+  { label: 'ham', text: 'Send me your pin location so the driver can find the shop.' },
+  { label: 'ham', text: 'Earn 15% interest per annum on your savings with us.' },
+  { label: 'ham', text: 'We made 25% profit this month, well done team!' },
+  { label: 'ham', text: 'Hope you are fine. The police checkpoint at Ojota was heavy today.' },
+  { label: 'ham', text: 'The court adjourned the case; please pay the filing fee of N5,000 at the registry.' },
+  { label: 'ham', text: 'Acct:01****89 DR Amt:NGN52.50 Desc:NIP TRANSFER FEE+VAT Avail Bal:NGN12,400.00' },
+  { label: 'ham', text: 'Desc: ELECTRONIC MONEY TRANSFER LEVY NGN50.00' },
+  { label: 'ham', text: 'Kindly pay the dispatch fee of N1,500 so the rider can deliver.' },
+  { label: 'ham', text: 'Pay for your order here: https://paystack.shop/adaeze-foods' },
+  { label: 'ham', text: 'Sign in at https://login.microsoftonline.com with your work email.' },
 ];

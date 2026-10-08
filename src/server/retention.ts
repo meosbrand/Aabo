@@ -1,8 +1,8 @@
 /**
  * @fileoverview Data retention (NDPA data minimisation): drop message excerpts after 30 days,
  * delete scans after 180 days, clear webhook payloads as soon as they are handled (and delete the
- * events after 7 days), keep the Developer audit log for a year, and clear expired caches,
- * rate-limit rows and link codes.
+ * events after 7 days), drop Co-pilot history and report excerpts after 30 days, keep the
+ * Developer audit log for a year, and clear expired caches, rate-limit rows and link codes.
  */
 
 import { prisma } from './db';
@@ -10,7 +10,7 @@ import { prisma } from './db';
 const DAY = 86_400_000;
 
 export async function runRetention(now = Date.now()) {
-  const [excerpts, scans, cache, limits, codes, payloads, stale, events, audit] = await Promise.all([
+  const [excerpts, scans, cache, limits, codes, payloads, stale, events, audit, chats, reportExcerpts] = await Promise.all([
     prisma.scan.updateMany({ where: { createdAt: { lt: new Date(now - 30 * DAY) }, excerpt: { not: null } }, data: { excerpt: null } }),
     prisma.scan.deleteMany({ where: { createdAt: { lt: new Date(now - 180 * DAY) } } }),
     prisma.intelCache.deleteMany({ where: { expiresAt: { lt: new Date(now) } } }),
@@ -23,6 +23,8 @@ export async function runRetention(now = Date.now()) {
     }),
     prisma.inboundEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 7 * DAY) } } }),
     prisma.auditEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 365 * DAY) } } }),
+    prisma.chatMessage.deleteMany({ where: { createdAt: { lt: new Date(now - 30 * DAY) } } }),
+    prisma.report.updateMany({ where: { createdAt: { lt: new Date(now - 30 * DAY) }, excerpt: { not: null } }, data: { excerpt: null } }),
   ]);
   return {
     excerpts: excerpts.count,
@@ -33,5 +35,7 @@ export async function runRetention(now = Date.now()) {
     inboundPayloads: payloads.count + stale.count,
     inboundEvents: events.count,
     audit: audit.count,
+    chats: chats.count,
+    reportExcerpts: reportExcerpts.count,
   };
 }

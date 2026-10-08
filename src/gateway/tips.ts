@@ -86,14 +86,23 @@ export async function runTips(adapters: Partial<Record<'whatsapp' | 'telegram', 
       where: { connectionId: id, tipsOptIn: true, blocked: false, lastInboundAt: { gt: new Date(now - WINDOW_MS) } },
     });
     for (const p of people) {
-      if (!p.address) continue;
+      if (!p.address || !p.lastInboundAt) continue;
+      // Re-check the window at send time: a long run must not drift past 24 hours.
+      if ((opts.now ?? Date.now()) - p.lastInboundAt.getTime() >= WINDOW_MS) continue;
       try {
         await adapter.send(p.address, tipText(p.language, tip));
         await prisma.intelCache.deleteMany({ where: { key: `tipfail:${p.id}` } });
         sent++;
       } catch (err) {
-        if (!(err instanceof CloudError)) logError('tips', err);
-        await noteFailure(p.id, now);
+        const code = err instanceof CloudError ? err.code : null;
+        if (code === 'invalid_recipient' || code === 'outside_window') {
+          await noteFailure(p.id, now);
+        } else {
+          // A problem with the organisation's account (credentials, limits, outage): stop, don't blame recipients.
+          logError(`tips for connection ${id}`, err);
+          await prisma.channelConnection.update({ where: { id }, data: { lastError: code ?? 'unreachable' } }).catch(() => undefined);
+          break;
+        }
       }
       await pause();
     }

@@ -14,7 +14,7 @@ import { securityAwarenessChatbot } from '@/server/ai/copilot';
 import { prisma } from '@/server/db';
 import { lookupSummary } from '@/server/lookup';
 import { rateLimit } from '@/server/rate-limit-store';
-import { markScanSafe, reportScan, runScan } from '@/server/scans';
+import { markScanSafe, maskNumbers, reportScan, runScan } from '@/server/scans';
 import { verdictFromScan } from '@/server/verdict-from-scan';
 import type { Identity, RouterServices } from './services';
 
@@ -124,7 +124,11 @@ export function createPrismaServices(scope: ServicesScope): RouterServices {
       if (!(await takeCheck(identity.id, limit))) return { ok: false, limit };
       if (conn) {
         const org = await rateLimit(`orgchecks:${conn.orgId}`, conn.orgDailyCap, DAY);
-        if (!org.ok) return { ok: false, limit };
+        if (!org.ok) {
+          // The business is out of checks today: give the person their check back.
+          await prisma.channelIdentity.updateMany({ where: { id: identity.id, checksDay: today(), checksToday: { gt: 0 } }, data: { checksToday: { decrement: 1 } } });
+          return { ok: false, limit };
+        }
       }
       return { ok: true, limit };
     },
@@ -192,7 +196,7 @@ export function createPrismaServices(scope: ServicesScope): RouterServices {
       );
       await prisma.chatMessage.createMany({
         data: [
-          { identityId: identity.id, userId: identity.userId, role: 'user', content: question.slice(0, 2000) },
+          { identityId: identity.id, userId: identity.userId, role: 'user', content: maskNumbers(question).slice(0, 2000) },
           { identityId: identity.id, userId: identity.userId, role: 'assistant', content: advice.slice(0, 4000) },
         ],
       });

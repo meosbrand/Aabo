@@ -26,6 +26,8 @@ export interface InboundMessage {
   image?: { base64: string; mime: string };
   document?: { fileName: string; mime?: string };
   contact?: { name?: string; phones: string[] };
+  /** An image or file was sent but could not be downloaded. */
+  unreadableMedia?: boolean;
 }
 
 export interface ChannelAdapter {

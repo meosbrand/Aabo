@@ -3,7 +3,7 @@
 import { securityAwarenessChatbot } from '@/server/ai/copilot';
 import type { Verdict } from '@/core/types';
 import { prisma } from '@/server/db';
-import { runScan } from '@/server/scans';
+import { maskNumbers, runScan } from '@/server/scans';
 import { getSessionUser } from '@/server/session';
 import { clientIp, rateLimit } from '@/server/rate-limit';
 import { toPublicVerdict } from '@/server/verdict-public';
@@ -42,7 +42,7 @@ export async function assistantAction(text: string, language: 'en' | 'pidgin', m
   );
   await prisma.chatMessage.createMany({
     data: [
-      { userId: user.id, role: 'user', content: input.slice(0, 2000) },
+      { userId: user.id, role: 'user', content: maskNumbers(input).slice(0, 2000) },
       { userId: user.id, role: 'assistant', content: advice.slice(0, 4000) },
     ],
   });

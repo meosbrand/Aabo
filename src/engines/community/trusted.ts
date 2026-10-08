@@ -39,6 +39,15 @@ const BUILT_IN = [
   'google.com',
   'apple.com',
   'microsoft.com',
+  'microsoftonline.com',
+  'office.com',
+  'live.com',
+  'outlook.com',
+  'paystack.co',
+  'paystack.shop',
+  'airtel.africa',
+  'mtnonline.com',
+  'flutterwave.co',
 ];
 
 let cache: { env: string; set: Set<string> } | null = null;

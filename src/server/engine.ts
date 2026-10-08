@@ -14,7 +14,7 @@ import { COMMUNITY_PROMPT } from '@/engines/community/prompt';
 import type { AiConfig } from './ai/config';
 import { resolveAiConfig } from './ai/resolve';
 import { OpenAICompatibleAnalyzer } from './ai/scam-analyzer';
-import { builtinEngine, engineInfo, loadEngine } from './engine-loader';
+import { builtinEngine, engineInfo, loadEngine, required } from './engine-loader';
 import { urlIntelFor } from './integrations';
 import { reputationStore } from './reputation-store';
 
@@ -54,7 +54,8 @@ export async function analyzeInput(input: ScanInput, opts: AnalyzeOptions = {}):
     raw = await engine.analyze(bounded, deps);
   } catch (err) {
     const fallback = await builtinEngine();
-    if (fallback === engine) throw err;
+    // With AABO_ENGINE_REQUIRED=1 a failing engine is an error, never a silent downgrade.
+    if (fallback === engine || required()) throw err;
     console.error(`[aabo] engine ${engine.id} failed (${(err as Error).message}); using ${fallback.id}.`);
     ran = fallback;
     raw = await fallback.analyze(bounded, deps);

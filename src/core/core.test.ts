@@ -115,6 +115,13 @@ describe('normalizeVerdict (shell guarantees)', () => {
     expect(v.engine).toEqual({ id: 't', version: '1.0.0' });
   });
 
+  it('keeps a floor even when its reason is trimmed from a very long list', () => {
+    const many: Reason[] = Array.from({ length: 60 }, (_, i) => ({ id: `n.${i}`, weight: 0.5, source: 'rule', text: { en: 'x', pidgin: 'x' } }));
+    const v = normalizeVerdict(verdict({ score: 0, reasons: [...many, { ...floorReason, weight: 0.01 }] }), input);
+    expect(v.reasons).toHaveLength(40);
+    expect(v.level).toBe('DANGEROUS');
+  });
+
   it('hashes long text the same way engines see it', () => {
     const long = 'a'.repeat(7000);
     expect(contentHashOf({ text: long })).toBe(contentHashOf({ text: long.slice(0, 6000) }));

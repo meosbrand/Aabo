@@ -6,14 +6,23 @@
 
 import OpenAI from 'openai';
 import { sha256 } from '@/core/hash';
-import { guardedFetch } from '../net/safe-fetch';
+import { assertSafeEndpoint, guardedFetch } from '../net/safe-fetch';
 import type { AiConfig } from './config';
 
 const clients = new Map<string, OpenAI>();
 const MAX_CLIENTS = 200;
 
+/** Header names the SDK would add from OPENAI_CUSTOM_HEADERS; we delete them (null) on every request. */
+function envHeaderNames(): string[] {
+  return (process.env.OPENAI_CUSTOM_HEADERS ?? '')
+    .split('\n')
+    .map((line) => (line.includes(':') ? line.slice(0, line.indexOf(':')).trim() : ''))
+    .filter(Boolean);
+}
+
 export function clientFor(cfg: AiConfig): OpenAI {
-  const key = sha256([cfg.source, cfg.baseURL, cfg.apiKey, cfg.timeoutMs, cfg.allowPrivate, JSON.stringify(cfg.headers)].join('|'));
+  const envNames = envHeaderNames();
+  const key = sha256([cfg.source, cfg.baseURL, cfg.apiKey, cfg.timeoutMs, cfg.allowPrivate, JSON.stringify(cfg.headers), envNames.join(',')].join('|'));
   let client = clients.get(key);
   if (!client) {
     client = new OpenAI({
@@ -25,7 +34,12 @@ export function clientFor(cfg: AiConfig): OpenAI {
       baseURL: cfg.baseURL,
       timeout: cfg.timeoutMs,
       maxRetries: 1,
-      defaultHeaders: cfg.headers,
+      // Explicit headers win over anything the SDK reads from the environment.
+      defaultHeaders: {
+        ...Object.fromEntries(envNames.map((n) => [n, null])),
+        ...cfg.headers,
+        Authorization: `Bearer ${cfg.apiKey || 'none'}`,
+      },
       logLevel: 'off',
       fetch: guardedFetch({ allowPrivate: cfg.allowPrivate, allowHeaders: Object.keys(cfg.headers) }),
     });
@@ -33,6 +47,11 @@ export function clientFor(cfg: AiConfig): OpenAI {
     clients.set(key, client);
   }
   return client;
+}
+
+/** Refuse a blocked endpoint before the SDK spends retries on it. */
+export async function ensureEndpoint(cfg: AiConfig): Promise<void> {
+  if (!cfg.allowPrivate) await assertSafeEndpoint(cfg.baseURL);
 }
 
 /** Request fields shared by every call: token limit, temperature and provider extras. */

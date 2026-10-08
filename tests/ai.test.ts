@@ -171,6 +171,15 @@ describe('OpenAI-compatible analyzer', () => {
     expect(user.match(/<\/message>/g)).toHaveLength(1);
     expect(user.match(/<message>/g)).toHaveLength(1);
     expect(user).toContain('‹/message>');
+    calls.length = 0;
+    await new OpenAICompatibleAnalyzer(cfg(), COMMUNITY_PROMPT).analyze({ ...REQ, text: 'x < /message> y' });
+    expect(calls[0].body.messages[1].content.match(/<\s*\/message>/g)).toHaveLength(1);
+  });
+
+  it('does not ask the model to guess about an image it cannot see', async () => {
+    const out = await new OpenAICompatibleAnalyzer(cfg({ vision: true }), COMMUNITY_PROMPT).analyze({ ...REQ, text: '', imageBase64: 'aGVsbG8=', imageMime: 'image/heic' });
+    expect(out).toBeNull();
+    expect(calls).toHaveLength(0);
   });
 
   it("gives a customer's own endpoint only the community prompt and coarse signals", async () => {
@@ -200,7 +209,7 @@ describe('OpenAI-compatible analyzer', () => {
     vi.stubEnv('OPENAI_BASE_URL', 'http://127.0.0.1:1/v1');
     vi.stubEnv('OPENAI_ORG_ID', 'org-leak');
     vi.stubEnv('OPENAI_PROJECT_ID', 'proj-leak');
-    vi.stubEnv('OPENAI_CUSTOM_HEADERS', 'X-Leak: secret');
+    vi.stubEnv('OPENAI_CUSTOM_HEADERS', 'X-Leak: secret\nAuthorization: Bearer sk-platform-leak\napi-key: platform-leak');
     await new OpenAICompatibleAnalyzer(cfg(), COMMUNITY_PROMPT).analyze(REQ);
     expect(calls).toHaveLength(1);
     const h = calls[0].headers;
@@ -208,6 +217,8 @@ describe('OpenAI-compatible analyzer', () => {
     expect(h['openai-organization']).toBeUndefined();
     expect(h['openai-project']).toBeUndefined();
     expect(h['x-leak']).toBeUndefined();
+    expect(h['api-key']).toBeUndefined();
+    expect(JSON.stringify(h)).not.toContain('platform-leak');
   });
 
   it('caps platform-paid calls per organisation per day', async () => {

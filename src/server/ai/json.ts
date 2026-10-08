@@ -11,7 +11,7 @@ import type { ChatCompletionContentPart, ChatCompletionCreateParamsNonStreaming,
 import type { ZodType, ZodTypeDef } from 'zod';
 import type { JsonMode } from '@/lib/ai-presets';
 import { logError } from '../log';
-import { clientFor, commonParams } from './client';
+import { clientFor, commonParams, ensureEndpoint } from './client';
 import type { AiConfig } from './config';
 
 export interface JsonRequest<T> {
@@ -71,6 +71,7 @@ function rejectsFormat(err: unknown): boolean {
 /** Like completeJson, but throws provider/network errors (used by the connection test). */
 export async function completeJsonOrThrow<T>(cfg: AiConfig, req: JsonRequest<T>): Promise<JsonResult<T>> {
   const model = req.model ?? cfg.model;
+  await ensureEndpoint(cfg);
   let mode = modeFor(cfg, model);
   for (;;) {
     const messages: ChatCompletionMessageParam[] = [
@@ -119,6 +120,7 @@ export async function completeJson<T>(cfg: AiConfig, req: JsonRequest<T>): Promi
 
 /** Plain-text chat completion (Co-pilot). Throws provider/network errors. */
 export async function completeText(cfg: AiConfig, messages: ChatCompletionMessageParam[], opts: { maxTokens: number; temperature?: number }): Promise<string | null> {
+  await ensureEndpoint(cfg);
   const body = { model: cfg.model, messages, ...commonParams(cfg, opts.maxTokens, opts.temperature) } as unknown as ChatCompletionCreateParamsNonStreaming;
   const res = await clientFor(cfg).chat.completions.create(body);
   const choice = res.choices?.[0];

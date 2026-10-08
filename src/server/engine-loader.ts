@@ -30,7 +30,7 @@ export interface EngineInfo {
 let loading: Promise<ScanEngine> | null = null;
 let info: EngineInfo | null = null;
 
-function required(): boolean {
+export function required(): boolean {
   return process.env.AABO_ENGINE_REQUIRED === '1';
 }
 

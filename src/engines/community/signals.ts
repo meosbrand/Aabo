@@ -25,17 +25,43 @@ function reason(s: Pick<TextSignal, 'id' | 'weight' | 'category' | 'floor' | 'en
   return r;
 }
 
-const NEGATED = /(don'?t|do not|never|no|not to)\s+$/;
+/** Negation anywhere earlier in the same clause ("GTBank will NEVER ask you to share your OTP"). */
+const NEGATED = /\b(never|not|don'?t|dont|no one|nobody|cannot|can'?t|won'?t|neither|nor)\b/;
 
-/** True when `verb … object` appears in one sentence and the verb is not negated ("don't share"). */
-function asks(t: string, verbs: string, objects: string, gap = 50): boolean {
-  const re = new RegExp(`\\b(${verbs})\\b[^.?!\\n]{0,${gap}}?\\b(${objects})\\b`, 'g');
+interface AskOptions {
+  gap?: number;
+  /** Ignore noun compounds where the object directly follows the verb ("transfer fee", "transfer levy"). */
+  noCompound?: boolean;
+}
+
+/** True when `verb … object` appears in one clause and the clause is not a warning ("never share"). */
+function asks(t: string, verbs: string, objects: string, opts: AskOptions = {}): boolean {
+  const re = new RegExp(`\\b(${verbs})\\b([^.?!\\n]{0,${opts.gap ?? 50}}?)\\b(${objects})\\b`, 'g');
   for (const m of t.matchAll(re)) {
-    const before = t.slice(Math.max(0, (m.index ?? 0) - 12), m.index);
-    if (!NEGATED.test(before)) return true;
+    const start = m.index ?? 0;
+    const clauseStart = Math.max(t.lastIndexOf('.', start), t.lastIndexOf('!', start), t.lastIndexOf('?', start), t.lastIndexOf('\n', start), t.lastIndexOf(';', start));
+    if (NEGATED.test(t.slice(clauseStart + 1, start))) continue;
+    if (opts.noCompound && !m[2].trim()) continue;
+    return true;
   }
   return false;
 }
+
+/** Things only a scammer asks you to hand over (not promo, tracking or gate codes). */
+const SECRET_CODES = [
+  'otps?',
+  "pins?(?! (location|point|drop))",
+  'tokens?',
+  'verification (codes?|numbers?)',
+  '(4|6|four|six)[- ]digits? (codes?|numbers?|pins?)',
+  '(one[- ]time|activation|security|sms|whatsapp|login|reset|bank) (codes?|passwords?|pins?)',
+  'codes? (that|wey|which|we|i|dem|they|you) (just )?(sent|send|receive|received|get|got)',
+  'codes? (sent|that came|wey come) to (you|your)',
+].join('|');
+
+/** A demand for money: a payment verb with an amount or a fine/bail/penalty. */
+const MONEY_DEMAND =
+  /\b(pay|transfer|send|settle|remit)\b[^.?!\n]{0,40}(₦|\bn\s?\d|\bngn\b|\b\d+\s?k\b|naira|\d{1,3}(,\d{3})+|\b(bail|fine|penalty|clearance|bribe|settlement)\b)/;
 
 const has = (re: RegExp) => (t: string) => re.test(t);
 
@@ -48,8 +74,8 @@ const TEXT_SIGNALS: TextSignal[] = [
     en: 'It asks you to pass on a one-time code or PIN. No genuine person or company ever needs your codes.',
     pidgin: 'E dey ask make you send code or PIN wey dem send you. No correct person or company go ever ask for your code.',
     test: (t) =>
-      asks(t, 'send|share|forward|give|tell|read|drop|screenshot', 'otps?|codes?|pins?|tokens?|verification number') ||
-      /\b(otp|code|pin)\b[^.?!\n]{0,40}\b(sent|came|enter(ed)?)\b[^.?!\n]{0,30}\b(by mistake|mistakenly|wrongly)\b/.test(t),
+      asks(t, 'send|share|forward|give|tell|read|drop|screenshot|disclose|provide', SECRET_CODES) ||
+      /\b(otp|code|pin)\b[^.?!\n]{0,40}\b(sent|came|went)\b[^.?!\n]{0,30}\b(by mistake|mistakenly|in error)\b/.test(t),
   },
   {
     id: 'c.card_details',
@@ -58,7 +84,7 @@ const TEXT_SIGNALS: TextSignal[] = [
     floor: 'LIKELY_SCAM',
     en: 'It asks for card details or a PIN. Your bank will never ask for these by message.',
     pidgin: 'E dey ask for your card details or PIN. Your bank no go ever ask for am for message.',
-    test: (t) => asks(t, 'send|provide|enter|confirm|update|share|give|input|reply with', 'cvv|card number|card details|atm pin|card pin|expiry date|internet banking password', 40),
+    test: (t) => asks(t, 'send|provide|enter|confirm|update|share|give|input|reply with', 'cvv|card number|card details|atm pin|card pin|expiry date|internet banking password', { gap: 40 }),
   },
   {
     id: 'c.id_numbers',
@@ -90,8 +116,8 @@ const TEXT_SIGNALS: TextSignal[] = [
     en: 'It asks you to pay a fee first to receive money, a job, a loan or a prize. That is the classic advance-fee trick.',
     pidgin: 'E dey ask make you pay fee first before you collect money, work, loan or prize. Na the old 419 style be that.',
     test: (t) =>
-      asks(t, 'pay|send|transfer|deposit|remit', 'fee|charge|levy|registration|activation|processing|clearance|unlock|unlocking|tax|commission', 40) &&
-      !/\b(delivery|shipping|school|tuition|exam|service) (fee|charge)/.test(t),
+      asks(t, 'pay|send|transfer|deposit|remit', 'fee|charge|levy|registration|activation|processing|clearance|unlock|unlocking|tax|commission', { gap: 40, noCompound: true }) &&
+      !/\b(delivery|shipping|dispatch|logistics|waybill|courier|rider|transport|school|tuition|exam|service|filing|registry|stamp|vat|sms|maintenance) (fee|charge|levy)/.test(t),
   },
   {
     id: 'c.job_fee',
@@ -131,7 +157,9 @@ const TEXT_SIGNALS: TextSignal[] = [
     category: 'investment',
     en: 'It promises guaranteed or very high returns. Real investments never guarantee profit.',
     pidgin: 'E promise sure profit or big returns. No correct investment dey guarantee profit.',
-    test: has(/\b(double your (money|investment|cash)|(send|pay|get|receive) (you )?(back )?double|guaranteed (returns?|profit|income)|risk[- ]free (investment|returns?)|\d{2,3}\s?% (daily|weekly|monthly|profit|returns?|interest|roi))\b/),
+    test: has(
+      /\b(double your (money|investment|cash)|(send|pay|get|receive) (you )?(back )?double|guaranteed (returns?|profit|income|roi)|risk[- ]free (investment|returns?)|\d{1,3}\s?% (daily|weekly|per day|per week|a day|a week|every (day|week))|(daily|weekly) (roi|returns?|profit) of \d)/,
+    ),
   },
   {
     id: 'c.authority_pay',
@@ -139,7 +167,10 @@ const TEXT_SIGNALS: TextSignal[] = [
     category: 'impersonation',
     en: 'It claims to be the police, EFCC or a court and asks for money. Law enforcement does not collect payments by message.',
     pidgin: 'E claim say na police, EFCC or court, and e dey ask for money. Police no dey collect money for message.',
-    test: (t) => /\b(efcc|police|dss|court|warrant|arrest|interpol)\b/.test(t) && /\b(pay|fee|fine|transfer|settle)\b/.test(t),
+    test: (t) =>
+      /\b(efcc|police|dss|court|warrant|arrest|interpol)\b/.test(t) &&
+      MONEY_DEMAND.test(t) &&
+      !/\b(filing|registration|lawyer'?s?|legal|solicitor'?s?) (fee|fees|charge)/.test(t),
   },
   {
     id: 'c.new_bank_details',
@@ -148,6 +179,14 @@ const TEXT_SIGNALS: TextSignal[] = [
     en: 'It asks you to pay into new or changed bank details. Confirm by calling a number you already have.',
     pidgin: 'E dey ask make you pay enter new account. Call the person for number wey you don get before before you pay.',
     test: (t) => /\b(new|changed|updated|different|another)\b[^.?!\n]{0,25}\b(account|bank details|account number|bank account)\b/.test(t) && /\b(pay|payment|transfer|remit|invoice)\b/.test(t),
+  },
+  {
+    id: 'c.gift_cards',
+    weight: 0.55,
+    category: 'impersonation',
+    en: 'It asks you to buy gift cards or send card codes. Scammers use gift cards because the money cannot be traced or returned.',
+    pidgin: 'E dey ask make you buy gift card or send card code. Scammers like gift card because money no fit trace or return.',
+    test: has(/\b(buy|send|get|purchase)\b[^.?!\n]{0,40}\b(gift ?cards?|itunes( cards?)?|google play cards?|steam cards?|apple cards?)\b/),
   },
   {
     id: 'c.keep_secret',
@@ -231,7 +270,11 @@ export function linkSignals(u: ParsedUrl): LinkCheck {
   if (SHORTENERS.has(domain)) {
     out.push(reason({ id: 'c.link_short', weight: 0.2, en: `${shown} is a short link that hides where it really goes.`, pidgin: `${shown} na short link wey hide where e dey really go.` }, 'url'));
   }
-  const brand = trustedNames().find((n) => u.hostname.replace(/[^a-z0-9]/g, '').includes(n));
+  // Brand name in a subdomain (gtbank.com.verify.top) or inside a longer domain name (gtbank-login.online);
+  // a domain that is just the brand on another ending (paystack.shop) is not flagged.
+  const name = domain.split('.')[0];
+  const sub = u.hostname.endsWith(`.${domain}`) ? u.hostname.slice(0, -domain.length - 1) : '';
+  const brand = trustedNames().find((n) => sub.replace(/[^a-z0-9]/g, '').includes(n) || (name !== n && name.replace(/[^a-z0-9]/g, '').includes(n)));
   if (brand) {
     out.push(
       reason(

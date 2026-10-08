@@ -4,6 +4,8 @@
 
 import type { Prisma } from '@prisma/client';
 import { levelAtLeast } from '@/core/levels';
+import { isSharedPlatform } from '@/core/lists';
+import { parseUrl } from '@/core/extract';
 import type { Category, IndicatorType, ScanInput, Verdict, VerdictIndicators } from '@/core/types';
 import { prisma } from './db';
 import { analyzeInput } from './engine';
@@ -27,12 +29,16 @@ export interface ScanResult {
 }
 
 /** Mask codes, account and card numbers before storing an excerpt. */
-export function redact(text: string): string {
+export function maskNumbers(text: string): string {
   return text
     .replace(/\b(\d{3})[- ]?(\d{3})\b/g, '•••-•••')
     .replace(/\b(\d{2})\d{6}(\d{2})\b/g, '$1••••••$2')
-    .replace(/\b(\d{4})\d{8,11}(\d{4})\b/g, '$1••••$2')
-    .slice(0, 280);
+    .replace(/\b(\d{4})\d{8,11}(\d{4})\b/g, '$1••••$2');
+}
+
+/** Short masked excerpt of a message for storage. */
+export function redact(text: string): string {
+  return maskNumbers(text).slice(0, 280);
 }
 
 function inputType(input: ScanInput): string {
@@ -45,6 +51,16 @@ function inputType(input: ScanInput): string {
   return 'text';
 }
 
+/**
+ * How often this content was checked in the last 30 days. Never includes traffic on another
+ * organisation's own number.
+ */
+export async function countSeen(contentHash: string, connectionId: string | null | undefined): Promise<number> {
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const scope = [{ connectionId: null }, ...(connectionId ? [{ connectionId }] : [])];
+  return prisma.scan.count({ where: { contentHash, createdAt: { gte: since }, OR: scope } });
+}
+
 export async function runScan(input: ScanInput, opts: ScanOptions = {}): Promise<ScanResult> {
   const verdict = await analyzeInput(input, { orgId: opts.orgId });
   return persistScan(input, verdict, opts);
@@ -53,10 +69,7 @@ export async function runScan(input: ScanInput, opts: ScanOptions = {}): Promise
 /** Store a verdict. Guardian scans (other people's messages) never keep any message text. */
 export async function persistScan(input: ScanInput, verdict: Verdict, opts: ScanOptions = {}): Promise<ScanResult> {
   const storeExcerpt = input.channel !== 'guardian' && opts.storeExcerpt !== false;
-  const since = new Date(Date.now() - 30 * 86_400_000);
-  // Counts never reveal traffic on another organisation's own number.
-  const scope = [{ connectionId: null }, ...(opts.connectionId ? [{ connectionId: opts.connectionId }] : [])];
-  const previous = await prisma.scan.count({ where: { contentHash: verdict.contentHash, createdAt: { gte: since }, OR: scope } });
+  const previous = await countSeen(verdict.contentHash, opts.connectionId);
   const excerptSource = input.text?.trim() || verdict.ocrText || input.url || input.phone || input.account || input.fileName || '';
   const scan = await prisma.scan.create({
     data: {
@@ -98,8 +111,21 @@ export interface ReportInput {
   trust?: number | null;
 }
 
-/** Record a community report and aggregate it into the reputation table. */
+/**
+ * Record a community report and aggregate it into the reputation table.
+ * Each reporter counts once per identifier. Anonymous reports and reports from organisations'
+ * own numbers (trust 0) wait for review and do not change reputation or public counts.
+ */
 export async function submitReport(input: ReportInput) {
+  const known = [
+    ...(input.reporterUserId ? [{ reporterUserId: input.reporterUserId }] : []),
+    ...(input.reporterIdentityId ? [{ reporterIdentityId: input.reporterIdentityId }] : []),
+  ];
+  const trust = input.trust ?? (known.length ? null : 0);
+  if (known.length) {
+    const existing = await prisma.report.findFirst({ where: { type: input.type, value: input.value, OR: known } });
+    if (existing) return existing;
+  }
   const report = await prisma.report.create({
     data: {
       type: input.type,
@@ -110,10 +136,10 @@ export async function submitReport(input: ReportInput) {
       scanId: input.scanId ?? null,
       reporterUserId: input.reporterUserId ?? null,
       reporterIdentityId: input.reporterIdentityId ?? null,
-      trust: input.trust ?? null,
+      trust,
     },
   });
-  if (input.type !== 'message' && input.trust !== 0) await bumpCommunityIndicator(input.type, input.value, input.category ?? null);
+  if (input.type !== 'message' && trust !== 0) await bumpCommunityIndicator(input.type, input.value, input.category ?? null);
   return report;
 }
 
@@ -135,7 +161,18 @@ export async function reportScan(scanId: string, reporter: { userId?: string | n
   for (const v of ind.phones ?? []) await submitReport({ ...base, type: 'phone', value: v });
   for (const v of ind.accounts ?? []) await submitReport({ ...base, type: 'account', value: v });
   for (const v of ind.wallets ?? []) await submitReport({ ...base, type: 'wallet', value: v });
-  for (const v of ind.domains ?? []) if (!trusted.has(v)) await submitReport({ ...base, type: 'domain', value: v });
+  for (const v of ind.domains ?? []) {
+    if (trusted.has(v)) continue;
+    if (!isSharedPlatform(v)) {
+      await submitReport({ ...base, type: 'domain', value: v });
+      continue;
+    }
+    // Short links and shared hosting: report the exact links, never the whole platform.
+    for (const u of ind.urls ?? []) {
+      const p = parseUrl(u);
+      if (p && (p.domain ?? p.hostname) === v) await submitReport({ ...base, type: 'url', value: p.href });
+    }
+  }
   await prisma.scan.update({ where: { id: scanId }, data: { feedback: 'scam' } });
   reputationStore.invalidate();
   return scan;
@@ -148,7 +185,10 @@ export async function markScanSafe(scanId: string) {
 /** Truecaller-style lookup for one identifier, with counts from reports. */
 export async function lookupIdentifier(type: IndicatorType, value: string) {
   const indicator = await prisma.indicator.findUnique({ where: { type_value: { type, value } } });
-  const reports = await prisma.report.count({ where: { type, value, status: { not: 'REJECTED' } } });
+  // Unreviewed zero-trust reports (anonymous, or from organisations' own numbers) are not public evidence.
+  const reports = await prisma.report.count({
+    where: { type, value, status: { not: 'REJECTED' }, OR: [{ trust: null }, { trust: { gt: 0 } }, { status: 'CONFIRMED' }] },
+  });
   return { indicator, reports };
 }
 

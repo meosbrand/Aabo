@@ -118,14 +118,18 @@ export class NetworkUrlIntel implements UrlIntel {
         const host = u.hostname.toLowerCase().replace(/^www\./, '');
         if (!SHORTENERS.has(host)) return hop === 0 ? null : current;
         if (u.protocol === 'http:') u.protocol = 'https:';
+        let res: Response;
         try {
-          const res = await shortLinkFetch(u.href, { method: 'HEAD', signal: AbortSignal.timeout(TIMEOUT_MS) });
-          const location = res.headers.get('location');
-          if (!location || res.status < 300 || res.status >= 400) return hop === 0 ? null : current;
-          current = new URL(location, u).href;
-        } catch {
-          return hop === 0 ? null : current;
+          res = await shortLinkFetch(u.href, { method: 'HEAD', signal: AbortSignal.timeout(TIMEOUT_MS) });
+        } catch (err) {
+          // A blocked address is a definite answer; a timeout or network error is not, so don't cache it.
+          if ((err as { code?: string }).code === 'blocked_address') return null;
+          throw new LookupFailed('unshorten failed');
         }
+        if (res.status === 429 || res.status >= 500) throw new LookupFailed(`unshorten ${res.status}`);
+        const location = res.headers.get('location');
+        if (!location || res.status < 300 || res.status >= 400) return hop === 0 ? null : current;
+        current = new URL(location, u).href;
       }
       return current;
     }).catch(() => null);

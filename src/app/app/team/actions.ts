@@ -31,18 +31,41 @@ export async function removeMember(membershipId: string) {
   return { ok: true };
 }
 
-/** Accept an invite: the signed-in user joins the business workspace (as their primary org). */
+/** True for a workspace nobody has used yet (only its creator, no settings, numbers or history). */
+async function untouchedStarter(orgId: string): Promise<boolean> {
+  const [org, members, integrations, connections, scans, invites] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: orgId }, select: { developerMode: true } }),
+    prisma.membership.count({ where: { orgId } }),
+    prisma.orgIntegration.count({ where: { orgId } }),
+    prisma.channelConnection.count({ where: { orgId } }),
+    prisma.scan.count({ where: { orgId } }),
+    prisma.invite.count({ where: { orgId } }),
+  ]);
+  return Boolean(org && !org.developerMode && members === 1 && integrations + connections + scans + invites === 0);
+}
+
+/**
+ * Accept an invite (only ever called from an explicit "Join" click). The user joins the business as
+ * staff. Their own starter workspace is removed only if it was never used; otherwise it is kept
+ * and stays their main workspace.
+ */
 export async function acceptInvite(code: string) {
   const user = await getSessionUser();
   if (!user) return { ok: false as const, error: 'Please sign in first.' };
   const invite = await prisma.invite.findUnique({ where: { code }, include: { org: true } });
   if (!invite || invite.expiresAt < new Date()) return { ok: false as const, error: 'This invite link is invalid or expired.' };
   const existing = await prisma.membership.findUnique({ where: { userId_orgId: { userId: user.id, orgId: invite.orgId } } });
-  if (!existing) {
-    // Staff join the employer's workspace; their own empty starter workspace is removed.
-    const own = await prisma.membership.findMany({ where: { userId: user.id, role: 'owner' }, include: { org: { include: { members: true } } } });
-    for (const m of own) if (m.org.members.length === 1) await prisma.organization.delete({ where: { id: m.orgId } });
-    await prisma.membership.create({ data: { userId: user.id, orgId: invite.orgId, role: invite.role } });
+  if (existing) return { ok: true as const, orgName: invite.org.name };
+  const own = await prisma.membership.findMany({ where: { userId: user.id, role: 'owner' } });
+  let kept = false;
+  for (const m of own) {
+    if (await untouchedStarter(m.orgId)) await prisma.organization.delete({ where: { id: m.orgId } });
+    else kept = true;
   }
-  return { ok: true as const, orgName: invite.org.name };
+  await prisma.membership.create({ data: { userId: user.id, orgId: invite.orgId, role: invite.role } });
+  return {
+    ok: true as const,
+    orgName: invite.org.name,
+    ...(kept ? { note: `You joined ${invite.org.name}. Your own business workspace is kept and stays your main workspace.` } : {}),
+  };
 }

@@ -85,6 +85,14 @@ describe('analyzeInput', () => {
   });
 });
 
+describe('required engines', () => {
+  it('never silently fall back at runtime when AABO_ENGINE_REQUIRED=1', async () => {
+    process.env.AABO_ENGINE_REQUIRED = '1';
+    __setEngineForTests({ id: 'broken', version: '0.0.1', apiVersion: ENGINE_API_VERSION, analyze: async () => Promise.reject(new Error('kaput')) });
+    await expect(analyzeInput({ channel: 'web', text: 'hi' }, { llmMode: 'never' })).rejects.toThrow('kaput');
+  });
+});
+
 describe('public verdict projection', () => {
   const v: Verdict = {
     level: 'DANGEROUS',

@@ -53,12 +53,10 @@ function cleanReason(r: unknown): Reason | null {
  * recompute the content hash and advice, and stamp which engine produced it.
  */
 export function normalizeVerdict(raw: Verdict, input: ScanInput, engine?: Verdict['engine']): Verdict {
-  const reasons = (Array.isArray(raw?.reasons) ? raw.reasons : [])
-    .map(cleanReason)
-    .filter((r): r is Reason => r !== null)
-    .slice(0, MAX_REASONS)
-    .sort((a, b) => b.weight - a.weight);
-  const floor = reasons.reduce<Level>((f, r) => (r.floor ? maxLevel(f, r.floor) : f), 'SAFE');
+  const all = (Array.isArray(raw?.reasons) ? raw.reasons.slice(0, 1000) : []).map(cleanReason).filter((r): r is Reason => r !== null);
+  // Floors count even from reasons that are trimmed from the list.
+  const floor = all.reduce<Level>((f, r) => (r.floor ? maxLevel(f, r.floor) : f), 'SAFE');
+  const reasons = all.sort((a, b) => b.weight - a.weight).slice(0, MAX_REASONS);
   let score = typeof raw?.score === 'number' && Number.isFinite(raw.score) ? Math.round(Math.max(0, Math.min(100, raw.score))) : 0;
   const level = maxLevel(maxLevel(isLevel(raw?.level) ? raw.level : 'SAFE', levelFromScore(score)), floor);
   score = Math.max(score, LEVEL_MIN_SCORE[level]);

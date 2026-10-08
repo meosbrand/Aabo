@@ -17,7 +17,8 @@ import { createPrismaServices } from './prisma-services';
 import { createRouter } from './router';
 
 const MAX_ATTEMPTS = 3;
-const STALE_LOCK_MS = 2 * 60_000;
+/** Longer than the slowest possible handling (AI timeouts with a retry, media, sends). */
+const STALE_LOCK_MS = 10 * 60_000;
 
 async function toMessage(conn: LoadedConnection, m: CloudInbound): Promise<InboundMessage> {
   const msg: InboundMessage = {
@@ -39,24 +40,30 @@ async function toMessage(conn: LoadedConnection, m: CloudInbound): Promise<Inbou
       return null;
     });
     if (img) msg.image = img;
-    else if (!m.text) msg.document = { fileName: 'image', mime: m.media.mime };
+    else msg.unreadableMedia = true;
   }
   return msg;
 }
 
 /** Handle one event if nobody else has claimed it. */
 export async function processInboundEvent(eventId: string): Promise<void> {
+  const claimedAt = new Date();
   const claimed = await prisma.inboundEvent.updateMany({
     where: { id: eventId, status: 'pending' },
-    data: { status: 'processing', lockedAt: new Date(), attempts: { increment: 1 } },
+    data: { status: 'processing', lockedAt: claimedAt, attempts: { increment: 1 } },
   });
   if (claimed.count !== 1) return;
   const event = await prisma.inboundEvent.findUnique({ where: { id: eventId } });
   if (!event) return;
+  // Only the holder of this claim may finish the event.
+  const mine = { id: eventId, status: 'processing', lockedAt: claimedAt };
   try {
     const conn = await connectionById(event.connectionId);
-    if (!conn || !conn.enabled || !conn.orgDeveloperMode || !event.payload) {
-      await prisma.inboundEvent.update({ where: { id: eventId }, data: { status: 'skipped', payload: null, lockedAt: null, processedAt: new Date() } });
+    // Developer Mode is re-read from the database: switching it off stops processing at once.
+    const org = conn ? await prisma.organization.findUnique({ where: { id: conn.orgId }, select: { developerMode: true } }) : null;
+    const active = conn?.enabled && org?.developerMode && process.env.DEVELOPER_MODE !== 'off';
+    if (!active || !event.payload) {
+      await prisma.inboundEvent.updateMany({ where: mine, data: { status: 'skipped', payload: null, lockedAt: null, processedAt: new Date() } });
       return;
     }
     const inbound = JSON.parse(event.payload) as CloudInbound;
@@ -70,13 +77,13 @@ export async function processInboundEvent(eventId: string): Promise<void> {
     });
     const router = createRouter(services, { typingDelayMs: 0 });
     await router.handle(await toMessage(conn, inbound), new CloudWhatsAppAdapter(conn, inbound.providerMessageId));
-    await prisma.inboundEvent.update({ where: { id: eventId }, data: { status: 'done', payload: null, lockedAt: null, error: null, processedAt: new Date() } });
+    await prisma.inboundEvent.updateMany({ where: mine, data: { status: 'done', payload: null, lockedAt: null, error: null, processedAt: new Date() } });
   } catch (err) {
     logError(`inbound event ${eventId}`, err);
     const giveUp = event.attempts >= MAX_ATTEMPTS;
     await prisma.inboundEvent
-      .update({
-        where: { id: eventId },
+      .updateMany({
+        where: mine,
         data: { status: giveUp ? 'failed' : 'pending', lockedAt: null, error: (err as { code?: string }).code ?? 'error', ...(giveUp ? { payload: null, processedAt: new Date() } : {}) },
       })
       .catch(() => undefined);

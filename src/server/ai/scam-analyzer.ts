@@ -18,7 +18,7 @@ const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif
 
 /** Neutralise anything that could close or open the message fence. */
 export function escapeFence(s: string): string {
-  return s.replace(/<(\/?)\s*message/gi, '‹$1message');
+  return s.replace(/<\s*(\/?)\s*message/gi, '‹$1message');
 }
 
 /** What an untrusted endpoint may see: no signal ids or weights, a coarse score. */
@@ -56,6 +56,8 @@ export class OpenAICompatibleAnalyzer implements LlmAnalyzer {
     const text = this.prompt.user(safe);
     // Formats most vision models accept; others (e.g. HEIC) are not sent, so the engine reports it could not read them.
     const withImage = this.vision && Boolean(req.imageBase64) && IMAGE_MIMES.has(req.imageMime ?? 'image/jpeg');
+    // An image the model can't see, with no text: nothing to judge, so don't let it guess.
+    if (req.imageBase64 && !withImage && !req.text.trim()) return null;
     const user: string | ChatCompletionContentPart[] = withImage
       ? [
           { type: 'text', text },

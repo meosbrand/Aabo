@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { VerdictCard } from "@/components/verdict-card";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/server/db";
+import { countSeen } from "@/server/scans";
 import { verdictFromScan } from "@/server/verdict-from-scan";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export default async function ScanResultPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const scan = await prisma.scan.findUnique({ where: { id } });
   if (!scan) notFound();
-  const seenCount = await prisma.scan.count({ where: { contentHash: scan.contentHash, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } } });
+  const seenCount = await countSeen(scan.contentHash, scan.connectionId);
 
   return (
     <>

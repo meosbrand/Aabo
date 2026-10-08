@@ -115,7 +115,14 @@ describe('bring your own AI key', () => {
     expect(await saveAiIntegration(admin, { mode: 'byok', provider: 'groq', model: 'llama-x' })).toEqual({ ok: true });
     const cfg = await resolveAiConfig(orgId);
     expect(cfg).toMatchObject({ source: 'byok', provider: 'groq', model: 'llama-x', apiKey: 'gsk_live_supersecret_9876', allowPrivate: false });
-    expect(await saveAiIntegration(admin, { mode: 'byok', provider: 'custom', baseURL: 'http://10.0.0.5/v1', model: 'm' })).toMatchObject({ ok: false, code: 'invalid' });
+    expect(await saveAiIntegration(admin, { mode: 'byok', provider: 'custom', baseURL: 'http://10.0.0.5/v1', model: 'm', apiKey: 'k-1234567890' })).toMatchObject({ ok: false, code: 'invalid' });
+    // The stored key never follows a change of destination unless it is typed again.
+    expect(await saveAiIntegration(admin, { mode: 'byok', provider: 'custom', baseURL: 'https://attacker.example/v1', model: 'm' })).toMatchObject({
+      ok: false,
+      code: 'invalid',
+      message: expect.stringMatching(/Enter the API key again/),
+    });
+    expect(await testAiIntegration(admin, { mode: 'byok', provider: 'openrouter' })).toMatchObject({ ok: false, code: 'invalid' });
     expect(await saveAiIntegration(admin, { mode: 'byok', provider: 'openai', clearKey: true })).toMatchObject({ ok: false, code: 'invalid' });
     expect(await saveAiIntegration(admin, { mode: 'nope' })).toMatchObject({ ok: false, code: 'invalid' });
   });
@@ -148,7 +155,7 @@ describe('bring your own AI key', () => {
   });
 
   it('rate-limits connection tests and reports blocked private endpoints', async () => {
-    await saveAiIntegration(admin, { mode: 'byok', provider: 'custom', baseURL: 'https://127.0.0.1/v1', model: 'm' });
+    await saveAiIntegration(admin, { mode: 'byok', provider: 'custom', baseURL: 'https://127.0.0.1/v1', model: 'm', apiKey: 'local-key-123456' });
     const r = await testAiIntegration(admin);
     expect(r.ok && r.result.code).toBe('blocked_address');
     expect((await prisma.orgIntegration.findUnique({ where: { orgId_kind: { orgId, kind: 'ai' } } }))?.status).toBe('error');

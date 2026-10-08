@@ -9,8 +9,9 @@ import { LEVEL_MIN_SCORE, levelFromScore, maxLevel } from '@/core/levels';
 import { actionsFor, summaryFor } from '@/core/advice';
 import type { Category, EngineDeps, Extracted, IndicatorType, Level, LlmResult, ParsedUrl, Reason, ScanInput, Verdict } from '@/core/types';
 import { parseUrl } from '@/core/extract';
-import { SHORTENERS } from '@/core/lists';
+import { isSharedPlatform, SHORTENERS } from '@/core/lists';
 import { fileSignals, linkSignals, ocrUnavailable, reputationSignal, textSignals } from './signals';
+import { trustedDomains } from './trusted';
 
 const MAX_LINKS = 5;
 const NEW_DOMAIN_DAYS = 30;
@@ -94,13 +95,17 @@ async function linkLayer(x: Extracted, deps: EngineDeps): Promise<{ reasons: Rea
 async function reputationLayer(x: Extracted, fingerprint: string | null, extraDomains: string[], deps: EngineDeps, opts: CommunityOptions): Promise<Reason[]> {
   const store = deps.reputation;
   if (!store) return [];
+  const trusted = trustedDomains();
+  // Official domains are never judged by reports; shared platforms only by exact URL.
+  const urls = x.urls.slice(0, MAX_LINKS).filter((u) => !trusted.has(u.domain ?? u.hostname));
+  const domains = [...new Set([...urls.map((u) => u.domain ?? u.hostname), ...extraDomains])].filter((d) => !trusted.has(d) && !isSharedPlatform(d));
   const checks: Array<[IndicatorType, string]> = [
     ...x.phones.map((v) => ['phone', v] as [IndicatorType, string]),
     ...x.accounts.map((v) => ['account', v] as [IndicatorType, string]),
     ...x.emails.map((v) => ['email', v] as [IndicatorType, string]),
     ...x.wallets.map((v) => ['wallet', v] as [IndicatorType, string]),
-    ...x.urls.slice(0, MAX_LINKS).map((u) => ['url', u.href] as [IndicatorType, string]),
-    ...[...new Set([...x.urls.slice(0, MAX_LINKS).map((u) => u.domain ?? u.hostname), ...extraDomains])].map((d) => ['domain', d] as [IndicatorType, string]),
+    ...urls.map((u) => ['url', u.href] as [IndicatorType, string]),
+    ...domains.map((d) => ['domain', d] as [IndicatorType, string]),
   ];
   if (fingerprint) checks.push(['fingerprint', fingerprint]);
   const out: Reason[] = [];
@@ -225,7 +230,7 @@ export async function analyzeCommunity(input: ScanInput, deps: EngineDeps, opts:
       accounts: x.accounts,
       emails: x.emails,
       wallets: x.wallets,
-      trustedDomains: domains.filter((d) => det.trusted.includes(d)),
+      trustedDomains: domains.filter((d) => det.trusted.includes(d) || trustedDomains().has(d)),
     },
     usedLlm: Boolean(llm),
     fingerprint,
