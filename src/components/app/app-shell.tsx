@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Bot,
   ClipboardCheck,
+  Code2,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -47,6 +48,8 @@ export interface ShellUser {
   name: string;
   email: string;
   role: string;
+  /** Role in the user's organisation; owners and admins see Developer settings. */
+  orgRole?: "owner" | "admin" | "member" | null;
   businessName: string | null;
   unreadAlerts: number;
 }
@@ -105,6 +108,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         <SidebarContent>
           <SidebarMenu>
             {NAV.map(item)}
+            {(user.orgRole === "owner" || user.orgRole === "admin") && item({ href: "/app/developer", icon: Code2, label: L("Developer", "Developer") })}
             {isReviewer && item({ href: "/admin/review", icon: Scale, label: L("Review reports", "Review reports") })}
           </SidebarMenu>
         </SidebarContent>

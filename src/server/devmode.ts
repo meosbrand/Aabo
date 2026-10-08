@@ -10,60 +10,21 @@
 import { z } from 'zod';
 import { AI_PRESETS, isAiProviderId } from '@/lib/ai-presets';
 import { AiConfigError, buildAiConfig, platformAiConfig, type AiConfig } from './ai/config';
-import { testAiConnection, type AiTestResult } from './ai/test-connection';
+import { testAiConnection } from './ai/test-connection';
+import type { AiTestResult } from '@/lib/developer-types';
+import type { AuditView, DevCode, DeveloperOverview, IntegrationView } from '@/lib/developer-types';
 import { prisma } from './db';
-import { engineInfo, loadEngine, type EngineInfo } from './engine-loader';
+import { engineInfo, loadEngine } from './engine-loader';
 import { developerModeAllowed, invalidateOrgSettings, type IntegrationKind } from './integrations';
 import { roleAtLeast, type OrgActor, type OrgRole } from './org-auth';
 import { rateLimit } from './rate-limit-store';
 import { hintOf, integrationAad, open, seal, secretsAvailable } from './secrets/crypto';
 
-export type DevCode =
-  | 'forbidden'
-  | 'operator_off'
-  | 'secrets_unavailable'
-  | 'developer_mode_off'
-  | 'invalid'
-  | 'rate_limited'
-  | 'not_found'
-  | 'platform_ai_missing';
-
 export type DevResult<T extends object = object> = ({ ok: true } & T) | { ok: false; code: DevCode; message?: string };
 
+export type { AuditView, DevCode, DeveloperOverview, IntegrationView };
+
 const fail = (code: DevCode, message?: string) => ({ ok: false as const, code, ...(message ? { message } : {}) });
-
-export interface IntegrationView {
-  kind: IntegrationKind;
-  config: Record<string, unknown>;
-  /** Last characters of the stored secret, or null when none is stored. */
-  hint: string | null;
-  enabled: boolean;
-  status: string;
-  lastError: string | null;
-  lastUsedAt: string | null;
-  updatedAt: string;
-}
-
-export interface AuditView {
-  action: string;
-  target: string | null;
-  actor: string;
-  createdAt: string;
-}
-
-export interface DeveloperOverview {
-  role: OrgRole;
-  orgName: string;
-  developerMode: boolean;
-  /** Operator allows Developer Mode (DEVELOPER_MODE is not "off"). */
-  allowed: boolean;
-  /** AABO_SECRET_KEYS is configured, so secrets can be stored. */
-  secretsAvailable: boolean;
-  platformAi: { available: boolean; provider: string | null; model: string | null };
-  engine: EngineInfo | null;
-  integrations: IntegrationView[];
-  audit: AuditView[];
-}
 
 export async function audit(actor: OrgActor, action: string, target?: string | null): Promise<void> {
   await prisma.auditEvent.create({ data: { orgId: actor.orgId, actorUserId: actor.userId, action, target: target?.slice(0, 200) ?? null } });

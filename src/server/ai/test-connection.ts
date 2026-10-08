@@ -4,23 +4,12 @@
  */
 
 import { z } from 'zod';
-import type { JsonMode } from '@/lib/ai-presets';
+import type { AiTestCode, AiTestResult } from '@/lib/developer-types';
 import type { AiConfig } from './config';
-import { classifyAiError, type AiErrorCode } from './errors';
+import { classifyAiError } from './errors';
 import { completeJsonOrThrow } from './json';
 
-export type AiTestCode = 'ok' | AiErrorCode;
-
-export interface AiTestResult {
-  ok: boolean;
-  code: AiTestCode;
-  latencyMs: number;
-  model: string;
-  /** JSON mode that worked (after any automatic downgrade). */
-  jsonMode: JsonMode | null;
-  /** Whether an image request worked; null when vision is off or the text test failed. */
-  vision: boolean | null;
-}
+export type { AiTestCode, AiTestResult };
 
 /** 1×1 transparent PNG. */
 const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';

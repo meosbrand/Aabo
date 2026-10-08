@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     prisma.alert.count({ where: { userId: user.id, readAt: null } }),
   ]);
   return (
-    <AppShell user={{ name: user.name, email: user.email, role: user.role, businessName: row?.businessName ?? null, unreadAlerts }}>
+    <AppShell user={{ name: user.name, email: user.email, role: user.role, orgRole: user.orgRole, businessName: row?.businessName ?? null, unreadAlerts }}>
       {children}
     </AppShell>
   );
