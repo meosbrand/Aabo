@@ -1,0 +1,56 @@
+# Phase 1 fetch failures (2026-10-07)
+# Every direct download (curl) and every WebFetch of the URLs below was refused by the cloud sandbox's
+# network egress proxy (HTTP 403 on CONNECT / EGRESS_BLOCKED). Content was therefore captured from the
+# web-search tool's extracts instead (see *-search-extract.md files). Hosts blocked included:
+# itbrief.com.au, bitdefender.com, scamshield.org.sg, rsis.edu.sg, hackmd.io, stork.ai, cnbcafrica.com,
+# alternativeto.net, izzysoft.de, frontlines.io, forgepointcap.com, hackread.com, securityweek.com,
+# ghanabusinessnews.com, forbesafrica.com, knowbe4.com, docs.openclaw.ai, abacus.ai, composio.dev,
+# zylos.ai, osv.dev, indiehackers.com, propakistani.pk, humanglemedia.com, icirnigeria.org, dubawa.org,
+# innovation-village.com, guardian.ng, techeconomy.ng, isthisascam.to, developers.google.com,
+# threatcluster.io, docs.rs, support.google.com, aclanthology.org, huggingface.co, lablab.ai,
+# ai.google.dev, reddit.com, arxiv.org
+url	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://itbrief.com.au/story/bitdefender-launches-ai-scam-detector-scamio-on-whatsapp-in-australia	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.bitdefender.com/en-us/blog/hotforsecurity/am-i-being-scammed-finding-out-has-never-been-easier	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.scamshield.org.sg/about-bot	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://scamshield.org.sg/bot-faqs/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://rsis.edu.sg/rsis-publication/cens/curbing-falsehoods-on-whatsapp-and-telegram	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://hackmd.io/@mrorz/r1nfwTrgM	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.stork.ai/en/ai-scam-detector-whatsapp-scanner	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://cnbcafrica.com/2021/truecaller-launches-smart-sms-feature-in-africa	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.alternativeto.net/news/2023/5/truecaller-to-expand-services-to-whatsapp-and-other-messaging-apps-for-spam-protection/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://apt.izzysoft.de/fdroid/index/apk/dev.kerballone.spamblocker?repo=main	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.frontlines.io/how-huntress-won-the-smb-cybersecurity-market/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://forgepointcap.com/perspectives/huntress-surpasses-100m-arr-by-democratizing-cybersecurity-for-small-and-mid-sized-enterprises/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://hackread.com/hoxhunt-gamified-phishing-awareness-enterprise/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.securityweek.com/security-awareness-firm-cybsafe-bags-28-million-series-b-funding/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.ghanabusinessnews.com/2025/09/03/african-businesses-face-rising-cybersecurity-risks-through-whatsapp-use/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.forbesafrica.com/technology/2025/10/06/ctrl-alt-action-how-african-startups-are-reinventing-cybersecurity-on-the-frontlines	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.knowbe4.com/hubfs/Africa-Annual-Survey_Whitepaper_US_EN-F.pdf	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://docs.openclaw.ai	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://claw.abacus.ai/claw_faq	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://composio.dev/blog/building-openclaw-from-scratch	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://zylos.ai/research/2026-01-26-whatsapp-api-automation	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://osv.dev/vulnerability/MAL-2026-16070	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.indiehackers.com/post/best-10-evolution-api-alternatives-in-2026-tested-9fc702d744	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://propakistani.pk/2026/08/04/thousands-of-whatsapp-users-suddenly-lose-account-access/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.humanglemedia.com/fake-alerts-dubious-stunts-the-digital-scams-draining-nigerias-pos-economy	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.icirnigeria.org/fraudsters-dent-nigerias-billion-naira-pos-business/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://dubawa.org/how-whatsapp-scammers-circumvent-security-features-to-swindle-nigerians/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://innovation-village.com/paga-whatsapp-giveaway-scam/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://guardian.ng/technology/tech/nigeria-records-4200-weekly-cyber-attacks-as-attackers-exploit-ai-report/	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://techeconomy.ng/cyber-threats-nigeria-2025-kaspersky-report	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://isthisascam.to/blog/scams-in-nigeria	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://developers.google.com/safe-browsing/v4/pricing	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://threatcluster.io/free-threat-intelligence-feeds	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://docs.rs/crate/phishnano/0.1.1	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://github.com/topics/typosquatting	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://support.google.com/googleplay/android-developer/answer/9214102?hl=en	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://github.com/AbayomiAlli/SMS-Spam-Dataset	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://preview.aclanthology.org/setup/2025.africanlp-1.23	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://huggingface.co/papers/2607.17353	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.indiehackers.com/product/issafe	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://lablab.ai/submissions/sp9ciq2t8zun6liedpf8flrj	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://ai.google.dev/competition/projects/waswas	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://www.reddit.com/r/Scams/search/?q=whatsapp+scam+checker	EGRESS_BLOCKED (curl 403 + WebFetch blocked)
+https://arxiv.org/abs/2605.16656	EGRESS_BLOCKED (curl 403 + WebFetch blocked)

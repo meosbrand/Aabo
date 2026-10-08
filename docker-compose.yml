@@ -1,0 +1,17 @@
+# Single-server deployment (a small VPS is enough to start).
+# SQLite lives in a volume; for multiple servers switch prisma/schema.prisma to postgresql.
+services:
+  aabo:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: file:./data/aabo.db
+      ROLE: all
+    ports:
+      - "9002:9002"
+    volumes:
+      - aabo-data:/app/prisma/data
+
+volumes:
+  aabo-data:

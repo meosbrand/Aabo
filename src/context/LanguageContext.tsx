@@ -1,13 +1,13 @@
-
 "use client";
 
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
-import { translations, TranslationKeys } from '@/lib/translations';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
 /**
  * Type definition for the available languages.
  */
-type Language = 'en' | 'pidgin';
+export type Language = 'en' | 'pidgin';
+
+const STORAGE_KEY = 'aabo.language';
 
 /**
  * Interface defining the shape of the LanguageContext.
@@ -15,7 +15,6 @@ type Language = 'en' | 'pidgin';
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: TranslationKeys;
 }
 
 /**
@@ -25,28 +24,34 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 /**
  * The provider component that wraps the application to make the language context available.
- * It manages the current language state and provides a function to update it.
- * @param {{ children: ReactNode }} props - The component props.
+ * The chosen language is remembered in localStorage (best effort).
+ * @param {{ children: ReactNode, initialLanguage?: Language }} props - The component props.
  * @returns {JSX.Element} The LanguageProvider component.
  */
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  // State to hold the current language, defaulting to 'en'.
-  const [language, setLanguage] = useState<Language>('en');
+export const LanguageProvider = ({ children, initialLanguage = 'en' }: { children: ReactNode; initialLanguage?: Language }) => {
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
 
-  // The translation object is passed directly. The consuming component will select the appropriate language.
-  const t = translations;
+  // Restore the remembered language after hydration.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved === 'en' || saved === 'pidgin') setLanguageState(saved);
+    } catch {
+      // Storage can be unavailable (private mode); English is fine.
+    }
+  }, []);
 
-  /**
-   * The value provided to the context consumers.
-   */
-  const providerValue = {
-    language,
-    setLanguage,
-    t,
+  const setLanguage = (next: Language) => {
+    setLanguageState(next);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // ignore
+    }
   };
 
   return (
-    <LanguageContext.Provider value={providerValue}>
+    <LanguageContext.Provider value={{ language, setLanguage }}>
       {children}
     </LanguageContext.Provider>
   );

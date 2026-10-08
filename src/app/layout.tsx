@@ -1,15 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { PwaRegister } from "@/components/pwa-register";
 
 /**
  * Metadata for the entire application.
  * This is used by Next.js to set the title and description in the HTML head.
  */
 export const metadata: Metadata = {
-  title: "Ààbò Digital Shield",
-  description: "Your friendly guardian in the digital world.",
+  title: "Ààbò — Scam Shield for Nigerian businesses",
+  description: "Check WhatsApp messages, SMS, links and numbers for scams, in English or Pidgin. Protect your business and staff.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Ààbò",
+  appleWebApp: { capable: true, title: "Ààbò", statusBarStyle: "default" },
+  icons: { icon: "/favicon.ico", apple: "/icons/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#005B4A",
+  width: "device-width",
+  initialScale: 1,
 };
 
 /**
@@ -36,10 +48,11 @@ export default function RootLayout({
         />
       </head>
       <body className={cn("font-body antialiased", "min-h-screen bg-background font-sans")}>
-        {/* Render the active page content */}
-        {children}
+        {/* Render the active page content with English/Pidgin support everywhere */}
+        <LanguageProvider>{children}</LanguageProvider>
         {/* Render the Toaster component to display notifications */}
         <Toaster />
+        <PwaRegister />
       </body>
     </html>
   );

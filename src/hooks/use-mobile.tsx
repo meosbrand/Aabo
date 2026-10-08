@@ -33,5 +33,5 @@ export function useIsMobile() {
     }
   }, []) // Empty dependency array ensures this effect runs only once on mount and cleanup on unmount.
 
-  return isMobile
+  return !!isMobile
 }

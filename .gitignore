@@ -37,10 +37,18 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.genkit/*
 .env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
 node_modules
+
+# Ààbò local data (SQLite db, WhatsApp sessions, research downloads cache)
+/.data/
+prisma/*.db
+prisma/*.db-journal
+prisma/data/
+prisma/*.db-wal
+prisma/*.db-shm
+!.env.example
