@@ -16,6 +16,11 @@ export async function verifyApiKey(req: Request) {
   if (!key) return null;
   const row = await prisma.apiKey.findUnique({ where: { hash: sha256(key) } });
   if (!row || row.revokedAt) return null;
+  // A key made for an organisation stops working when its creator leaves that organisation.
+  if (row.orgId && row.userId) {
+    const member = await prisma.membership.findUnique({ where: { userId_orgId: { userId: row.userId, orgId: row.orgId } } });
+    if (!member) return null;
+  }
   prisma.apiKey.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   return row;
 }

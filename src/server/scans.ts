@@ -15,6 +15,8 @@ export interface ScanOptions {
   identityId?: string | null;
   /** Store a short redacted excerpt (user-initiated checks). Never for Guardian scans. */
   storeExcerpt?: boolean;
+  /** Organisation WhatsApp connection the message came through (Developer Mode). */
+  connectionId?: string | null;
 }
 
 export interface ScanResult {
@@ -52,7 +54,9 @@ export async function runScan(input: ScanInput, opts: ScanOptions = {}): Promise
 export async function persistScan(input: ScanInput, verdict: Verdict, opts: ScanOptions = {}): Promise<ScanResult> {
   const storeExcerpt = input.channel !== 'guardian' && opts.storeExcerpt !== false;
   const since = new Date(Date.now() - 30 * 86_400_000);
-  const previous = await prisma.scan.count({ where: { contentHash: verdict.contentHash, createdAt: { gte: since } } });
+  // Counts never reveal traffic on another organisation's own number.
+  const scope = [{ connectionId: null }, ...(opts.connectionId ? [{ connectionId: opts.connectionId }] : [])];
+  const previous = await prisma.scan.count({ where: { contentHash: verdict.contentHash, createdAt: { gte: since }, OR: scope } });
   const excerptSource = input.text?.trim() || verdict.ocrText || input.url || input.phone || input.account || input.fileName || '';
   const scan = await prisma.scan.create({
     data: {
@@ -66,6 +70,9 @@ export async function persistScan(input: ScanInput, verdict: Verdict, opts: Scan
       reasons: verdict.reasons as unknown as Prisma.InputJsonValue,
       indicators: { ...verdict.indicators, fingerprint: verdict.fingerprint } as unknown as Prisma.InputJsonValue,
       usedLlm: verdict.usedLlm,
+      engine: verdict.engine ? `${verdict.engine.id}@${verdict.engine.version}${verdict.engine.fallback ? '+fallback' : ''}` : null,
+      llmModel: verdict.aiModel ?? null,
+      connectionId: opts.connectionId ?? null,
       userId: opts.userId ?? null,
       orgId: opts.orgId ?? null,
       identityId: opts.identityId ?? null,
@@ -87,6 +94,8 @@ export interface ReportInput {
   scanId?: string;
   reporterUserId?: string | null;
   reporterIdentityId?: string | null;
+  /** 0 = unverified source (e.g. an organisation's own number): kept for review, no reputation effect. */
+  trust?: number | null;
 }
 
 /** Record a community report and aggregate it into the reputation table. */
@@ -101,9 +110,10 @@ export async function submitReport(input: ReportInput) {
       scanId: input.scanId ?? null,
       reporterUserId: input.reporterUserId ?? null,
       reporterIdentityId: input.reporterIdentityId ?? null,
+      trust: input.trust ?? null,
     },
   });
-  if (input.type !== 'message') await bumpCommunityIndicator(input.type, input.value, input.category ?? null);
+  if (input.type !== 'message' && input.trust !== 0) await bumpCommunityIndicator(input.type, input.value, input.category ?? null);
   return report;
 }
 
@@ -112,13 +122,13 @@ export async function submitReport(input: ReportInput) {
  * Domains the engine recognised as legitimate are skipped so a scam that quotes a bank's
  * real website doesn't taint it.
  */
-export async function reportScan(scanId: string, reporter: { userId?: string | null; identityId?: string | null }, note?: string) {
+export async function reportScan(scanId: string, reporter: { userId?: string | null; identityId?: string | null; trust?: number | null }, note?: string) {
   const scan = await prisma.scan.findUnique({ where: { id: scanId } });
   if (!scan) return null;
   const ind = scan.indicators as unknown as Partial<VerdictIndicators> & { fingerprint?: string | null };
   const trusted = new Set(ind.trustedDomains ?? []);
   const category = (scan.category as Category | null) ?? null;
-  const base = { category, scanId, reporterUserId: reporter.userId, reporterIdentityId: reporter.identityId, note };
+  const base = { category, scanId, reporterUserId: reporter.userId, reporterIdentityId: reporter.identityId, trust: reporter.trust, note };
 
   await submitReport({ ...base, type: 'message', value: scan.contentHash, excerpt: scan.excerpt ?? undefined });
   if (ind.fingerprint) await submitReport({ ...base, type: 'fingerprint', value: ind.fingerprint });

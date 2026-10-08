@@ -7,7 +7,7 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { TIPS, randomTip } from '@/core/awareness/content';
 import { logError } from '../log';
-import { resolveAiConfig } from './config';
+import { resolveAiConfig } from './resolve';
 import { SecurityAwarenessInputSchema, type SecurityAwarenessInput, type SecurityAwarenessOutput } from './copilot-schema';
 import { completeText } from './json';
 import { withinPlatformCap } from './quota';

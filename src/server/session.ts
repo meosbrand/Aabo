@@ -6,6 +6,7 @@
 import { headers } from 'next/headers';
 import { auth } from './auth';
 import { prisma } from './db';
+import { asOrgRole } from './org-auth';
 
 export interface SessionUser {
   id: string;
@@ -14,6 +15,8 @@ export interface SessionUser {
   role: string;
   language: string;
   orgId: string | null;
+  /** Role in that organisation ("owner" | "admin" | "member"), null without one. */
+  orgRole: 'owner' | 'admin' | 'member' | null;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -32,6 +35,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       role: user.role,
       language: user.language,
       orgId: user.memberships[0]?.orgId ?? null,
+      orgRole: user.memberships[0] ? asOrgRole(user.memberships[0].role) : null,
     };
   } catch {
     return null;

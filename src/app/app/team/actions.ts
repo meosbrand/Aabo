@@ -20,7 +20,13 @@ export async function removeMember(membershipId: string) {
   if (!user?.orgId) return { ok: false };
   const me = await prisma.membership.findUnique({ where: { userId_orgId: { userId: user.id, orgId: user.orgId } } });
   if (!me || me.role !== 'owner') return { ok: false };
-  await prisma.membership.deleteMany({ where: { id: membershipId, orgId: user.orgId, role: { not: 'owner' } } });
+  const target = await prisma.membership.findFirst({ where: { id: membershipId, orgId: user.orgId, role: { not: 'owner' } } });
+  if (!target) return { ok: false };
+  await prisma.$transaction([
+    prisma.membership.delete({ where: { id: target.id } }),
+    // Their API keys for this organisation stop working too.
+    prisma.apiKey.updateMany({ where: { userId: target.userId, orgId: user.orgId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
   revalidatePath('/app/team');
   return { ok: true };
 }

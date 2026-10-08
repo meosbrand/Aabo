@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { ENGINE_API_VERSION, type ScamPromptPack, type ScanEngine } from '@/core/engine';
 import type { LlmRequest } from '@/core/types';
 import { COMMUNITY_PROMPT } from '@/engines/community/prompt';
-import { buildAiConfig, type AiConfig, type AiSettings } from '@/server/ai/config';
+import { __resetPlatformAiConfig, buildAiConfig, type AiConfig, type AiSettings } from '@/server/ai/config';
 import { securityAwarenessChatbot } from '@/server/ai/copilot';
 import { __resetJsonDowngrades } from '@/server/ai/json';
 import { OpenAICompatibleAnalyzer } from '@/server/ai/scam-analyzer';

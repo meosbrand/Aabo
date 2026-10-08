@@ -157,6 +157,8 @@ export interface Verdict {
   ocrText?: string;
   /** Which engine produced the verdict (stamped by the app shell). */
   engine?: { id: string; version: string; fallback?: boolean };
+  /** AI model consulted (stamped by the app shell; server-side only). */
+  aiModel?: string;
 }
 
 // ---------------------------------------------------------------------------

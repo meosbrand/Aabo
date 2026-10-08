@@ -30,6 +30,9 @@ export default defineConfig({
       AABO_ENGINE_MODULE: "",
       AABO_ENGINE_REQUIRED: "",
       AABO_PRO_PROMPT_FOR_BYOK: "",
+      DEVELOPER_MODE: "",
+      // Fixed test keyring (never use outside tests).
+      AABO_SECRET_KEYS: "t1:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=",
       GOOGLE_SAFE_BROWSING_API_KEY: "",
       URLHAUS_AUTH_KEY: "",
     },

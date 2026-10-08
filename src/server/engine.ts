@@ -11,11 +11,12 @@ import { MAX_SCAN_TEXT } from '@/core/hash';
 import { normalizeVerdict } from '@/core/normalize';
 import type { EngineDeps, ScanInput, Verdict } from '@/core/types';
 import { COMMUNITY_PROMPT } from '@/engines/community/prompt';
-import { resolveAiConfig, type AiConfig } from './ai/config';
+import type { AiConfig } from './ai/config';
+import { resolveAiConfig } from './ai/resolve';
 import { OpenAICompatibleAnalyzer } from './ai/scam-analyzer';
 import { builtinEngine, engineInfo, loadEngine } from './engine-loader';
+import { urlIntelFor } from './integrations';
 import { reputationStore } from './reputation-store';
-import { urlIntel } from './url-intel';
 
 export interface AnalyzeOptions {
   /** Organisation the scan runs for (selects its AI provider and intel keys). */
@@ -33,7 +34,7 @@ export function promptFor(cfg: AiConfig, engine: ScanEngine): ScamPromptPack {
 }
 
 export async function engineDepsFor(opts: AnalyzeOptions = {}): Promise<EngineDeps> {
-  const [engine, ai] = await Promise.all([loadEngine(), opts.llmMode === 'never' ? null : resolveAiConfig(opts.orgId)]);
+  const [engine, ai, urlIntel] = await Promise.all([loadEngine(), opts.llmMode === 'never' ? null : resolveAiConfig(opts.orgId), urlIntelFor(opts.orgId)]);
   return {
     reputation: reputationStore,
     urlIntel,
@@ -59,7 +60,9 @@ export async function analyzeInput(input: ScanInput, opts: AnalyzeOptions = {}):
     raw = await fallback.analyze(bounded, deps);
   }
   const fellBack = ran !== engine || Boolean(engineInfo()?.fallback);
-  return normalizeVerdict(raw, input, { id: ran.id, version: ran.version, ...(fellBack ? { fallback: true } : {}) });
+  const verdict = normalizeVerdict(raw, input, { id: ran.id, version: ran.version, ...(fellBack ? { fallback: true } : {}) });
+  if (verdict.usedLlm && deps.llm?.model) verdict.aiModel = deps.llm.model;
+  return verdict;
 }
 
 export { normalizeVerdict };

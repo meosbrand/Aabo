@@ -177,6 +177,8 @@ const BASE_HEADERS = new Set(['authorization', 'content-type', 'accept', 'accept
 export interface GuardedFetchOptions extends EndpointPolicy {
   /** Largest response body accepted (bytes). Default 2 MB. */
   maxBytes?: number;
+  /** 'error' (default) rejects redirects; 'manual' returns them so the caller can inspect Location. */
+  redirect?: 'error' | 'manual';
   /** Extra request headers that may be sent (lower-case names). */
   allowHeaders?: string[];
 }
@@ -224,7 +226,7 @@ export function guardedFetch(opts: GuardedFetchOptions = {}) {
       headers,
       body: (init?.body ?? undefined) as never,
       signal: init?.signal ?? undefined,
-      redirect: 'error',
+      redirect: opts.redirect ?? 'error',
       dispatcher: agentFor(Boolean(opts.allowPrivate)),
     });
     return capped(res as unknown as Response, limit);

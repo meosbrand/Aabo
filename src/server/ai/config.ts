@@ -148,13 +148,7 @@ export function platformAiConfig(): AiConfig | null {
   return cfg;
 }
 
-/** The AI configuration for a scan or answer made on behalf of `orgId` (null: rules only). */
-export async function resolveAiConfig(orgId?: string | null): Promise<AiConfig | null> {
-  const platform = platformAiConfig();
-  return platform ? { ...platform, orgId: orgId ?? null } : null;
-}
-
-/** Forget cached configuration for an organisation (after its settings change). */
-export function invalidateAiConfig(_orgId?: string | null): void {
+/** Tests only: forget the cached platform configuration. */
+export function __resetPlatformAiConfig(): void {
   platformCache = null;
 }
