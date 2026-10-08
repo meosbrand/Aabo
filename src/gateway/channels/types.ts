@@ -1,7 +1,8 @@
 /**
  * @fileoverview Transport-neutral chat types. Nothing above the adapters knows which
  * library carries the message, so the official WhatsApp Cloud API can be added later as
- * another adapter (WHATSAPP_TRANSPORT=cloud) without touching the router.
+ * another adapter without touching the router (organisations' own numbers on the official
+ * APIs use src/server/channels/cloud and the same router).
  */
 
 export type ChannelName = 'whatsapp' | 'telegram' | 'fake';

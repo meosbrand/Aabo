@@ -16,6 +16,7 @@ fraud — in English and Pidgin.
 | **Incidents** | Playbooks for hijacked WhatsApp, money sent to scammers, leaked PIN/OTP, malicious APKs. |
 | **Partner API** | `POST /api/v1/scan`, `GET /api/v1/lookup`, `POST /api/v1/report` with API keys. |
 | **Any AI model** | Any OpenAI-compatible API: OpenAI, OpenRouter, Groq, Together, DeepSeek, Gemini, Azure, or your own Ollama / LM Studio / vLLM. |
+| **Developer Mode** | A business brings its own AI key, threat-intel keys and WhatsApp number on the official APIs (Meta Cloud API, Twilio, 360dialog) — see [docs/developer-mode.md](docs/developer-mode.md). |
 
 ## Open source and the detection engine
 
@@ -38,7 +39,8 @@ owner, and that engine internals (signal weights and ids) never reach browsers o
 Next.js 15 PWA + API (web)              Gateway (long-running: npm run gateway)
   /check /lookup /learn /app/* /api/v1     ChannelAdapter: WhatsApp bot | Guardian | Telegram
             \                              /   (Baileys linked device, grammY)
-             src/server — scans, reputation, threat feeds, AI (OpenAI-compatible), engine loader
+             src/server — scans, reputation, threat feeds, AI (OpenAI-compatible), engine loader,
+                          Developer Mode, official WhatsApp APIs (webhooks → same router)
              src/core   — engine contract, verdict rules, shared helpers (pure TS)
              detection engine — community (bundled) or a separately distributed module
              Prisma DB (SQLite locally, Postgres in production)
@@ -79,6 +81,7 @@ Everything works without API keys (patterns + link checks + community reputation
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Push notifications (`npx web-push generate-vapid-keys`) |
 | `ADMIN_EMAILS` | Accounts that can review community reports at `/admin/review` |
 | `AABO_ENGINE`, `AABO_ENGINE_MODULE`, `AABO_ENGINE_REQUIRED` | Which detection engine runs (see [docs/open-core.md](docs/open-core.md)) |
+| `AABO_SECRET_KEYS`, `PUBLIC_WEBHOOK_BASE_URL` | Developer Mode: encrypted customer keys and webhooks for their own WhatsApp numbers (see [docs/developer-mode.md](docs/developer-mode.md)) |
 
 ### AI providers
 
@@ -105,6 +108,13 @@ and a customer-supplied endpoint can't be pointed at private network addresses.
   or a QR. On that phone: WhatsApp › Linked devices › Link a device › *Link with phone number instead*.
 - **Guardian:** each user does this from `/app/guardian` (consent + phone number → pairing code shown in the app).
 
+### Developer Mode
+
+Business owners can switch on Developer Mode at **App › Developer** to use their own AI provider, Safe Browsing /
+URLhaus keys and their own WhatsApp number on the Meta Cloud API, Twilio or 360dialog. Keys are encrypted at rest and
+shown only as hints; every change is audited. Setup guides: [docs/developer-mode.md](docs/developer-mode.md) and
+[docs/whatsapp-cloud-setup.md](docs/whatsapp-cloud-setup.md).
+
 ### Threat feeds
 
 `npm run feeds:sync` imports OpenPhish (no key), URLhaus and PhishTank (with keys). Run it every few hours (cron).
@@ -113,8 +123,9 @@ and a customer-supplied endpoint can't be pointed at private network addresses.
 
 ```bash
 npm run typecheck && npm run lint
-npm test          # unit + integration tests (engine contract, router via FakeChannel, AI layer, DB services, Guardian)
+npm test          # unit + integration tests (engine contract, router, AI layer, Developer Mode, WhatsApp webhooks, Guardian)
 npm run eval      # confusion matrix of the loaded engine on the labelled sample set
+npm run test:e2e  # Playwright: production build, Developer settings end to end
 ```
 
 The community sample set (`src/engines/community/samples.ts`) was written for this project, so its scores are
@@ -148,7 +159,6 @@ Re-run it with the project skill: `.claude/skills/aabo-research` (uses the vendo
 
 ## Roadmap
 
-- Developer Mode: bring your own AI key, threat-intel keys and WhatsApp API (Meta Cloud API, Twilio, 360dialog)
 - Android companion app (notification screening across SMS/WhatsApp/Telegram) using `POST /api/v1/scan`
 - Yoruba, Hausa and Igbo; partner dashboards for MSPs, telcos and POS networks
 
