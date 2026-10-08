@@ -1,8 +1,10 @@
 /**
  * @fileoverview Fixed-window counters stored in the database (work across processes).
+ * Atomic: concurrent requests can never push a counter past its limit.
  * No Next.js imports: shared by the web app and the gateway.
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 
 export interface RateLimitResult {
@@ -13,13 +15,15 @@ export interface RateLimitResult {
 
 export async function rateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   const now = new Date();
+  const resetAt = new Date(now.getTime() + windowMs);
+  // 1. Make sure the row exists (a concurrent create is fine).
+  await prisma.rateLimit.create({ data: { key, count: 0, resetAt } }).catch((err: unknown) => {
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
+  });
+  // 2. Start a new window if the old one is over.
+  await prisma.rateLimit.updateMany({ where: { key, resetAt: { lte: now } }, data: { count: 0, resetAt } });
+  // 3. Take one unit only while under the limit.
+  const took = await prisma.rateLimit.updateMany({ where: { key, count: { lt: limit } }, data: { count: { increment: 1 } } });
   const row = await prisma.rateLimit.findUnique({ where: { key } });
-  if (!row || row.resetAt <= now) {
-    const resetAt = new Date(now.getTime() + windowMs);
-    await prisma.rateLimit.upsert({ where: { key }, create: { key, count: 1, resetAt }, update: { count: 1, resetAt } });
-    return { ok: true, remaining: limit - 1, resetAt };
-  }
-  if (row.count >= limit) return { ok: false, remaining: 0, resetAt: row.resetAt };
-  await prisma.rateLimit.update({ where: { key }, data: { count: { increment: 1 } } });
-  return { ok: true, remaining: limit - row.count - 1, resetAt: row.resetAt };
+  return { ok: took.count === 1, remaining: Math.max(0, limit - (row?.count ?? limit)), resetAt: row?.resetAt ?? resetAt };
 }

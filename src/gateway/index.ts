@@ -2,17 +2,19 @@
  * Ààbò messaging gateway — a long-running process next to the web app.
  *   npm run gateway
  * Channels: WhatsApp linked device (Baileys: shared bot number + Guardian sessions) and Telegram.
- * The official WhatsApp Cloud API can be added later as another adapter (WHATSAPP_TRANSPORT=cloud).
+ * It also retries webhook deliveries for organisations' own WhatsApp numbers (Developer Mode).
  */
 
 import 'dotenv/config';
 import { prisma } from '@/server/db';
 import { TelegramAdapter } from './channels/telegram/adapter';
 import { prismaServices } from './prisma-services';
+import { InboundSweeper } from './inbound';
 import { createRouter } from './router';
 import { SessionManager } from './session-manager';
 import { startTipScheduler } from './tips';
 import { runRetention } from '@/server/retention';
+import { secretsAvailable } from '@/server/secrets/crypto';
 
 async function main() {
   if ((process.env.DATABASE_URL ?? '').startsWith('file:')) {
@@ -39,11 +41,15 @@ async function main() {
     await manager.start();
     stops.push(() => manager!.stop());
     console.log('[aabo] whatsapp: linked-device sessions running');
-  } else if (transport === 'cloud') {
-    console.log('[aabo] whatsapp: Cloud API transport is not implemented yet — add channels/whatsapp-cloud/');
   } else {
     console.log('[aabo] whatsapp: disabled');
   }
+
+  // Organisations' own WhatsApp numbers (official APIs) arrive by webhook; this retries stragglers.
+  const sweeper = new InboundSweeper();
+  sweeper.start();
+  stops.push(() => sweeper.stop());
+  if (!secretsAvailable()) console.log('[aabo] developer mode: AABO_SECRET_KEYS is not set, so organisations cannot connect their own keys or numbers');
 
   stops.push(
     startTipScheduler({

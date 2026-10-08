@@ -1,9 +1,15 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { AiTestResult, DevCode } from '@/lib/developer-types';
+import type { AiTestResult, ConnectionSecrets, ConnectionView, DevCode } from '@/lib/developer-types';
 import {
+  createConnection,
+  deleteConnection,
   removeIntegration,
+  rotateConnection,
+  sendTestMessage,
+  updateConnection,
+  verifyConnection,
   saveAiIntegration,
   saveIntelKey,
   setDeveloperMode,
@@ -44,4 +50,32 @@ export async function saveIntelKeyAction(kind: 'safebrowsing' | 'urlhaus', key: 
 
 export async function removeAiAction(): Promise<DevActionResult> {
   return done(await removeIntegration(await actor(), 'ai'));
+}
+
+export type ConnectionActionResult =
+  | { ok: true; connection?: ConnectionView; secrets?: ConnectionSecrets; manualSetup?: boolean }
+  | { ok: false; code: DevCode; message?: string };
+
+export async function createConnectionAction(input: unknown): Promise<ConnectionActionResult> {
+  return done(await createConnection(await actor(), input));
+}
+
+export async function verifyConnectionAction(id: string): Promise<ConnectionActionResult> {
+  return done(await verifyConnection(await actor(), id));
+}
+
+export async function testConnectionAction(id: string, to: string): Promise<ConnectionActionResult> {
+  return done(await sendTestMessage(await actor(), id, to));
+}
+
+export async function updateConnectionAction(id: string, patch: unknown): Promise<ConnectionActionResult> {
+  return done(await updateConnection(await actor(), id, patch));
+}
+
+export async function rotateConnectionAction(id: string): Promise<ConnectionActionResult> {
+  return done(await rotateConnection(await actor(), id));
+}
+
+export async function deleteConnectionAction(id: string): Promise<ConnectionActionResult> {
+  return done(await deleteConnection(await actor(), id));
 }

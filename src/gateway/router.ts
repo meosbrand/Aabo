@@ -8,6 +8,7 @@ import { QUIZ, findQuiz, randomTip, type QuizQuestion } from '@/core/awareness/c
 import { CATEGORY_LABEL } from '@/core/advice';
 import { verdictToChat, warningMessage } from '@/core/format/chat';
 import type { Bilingual, Category, Lang } from '@/core/types';
+import { logError } from '@/server/log';
 import type { ChannelAdapter, InboundMessage } from './channels/types';
 import type { Identity, RouterServices } from './services';
 
@@ -49,7 +50,12 @@ const MSG = {
   ),
   seen: B('👥 {n} people checked this same message this month.', '👥 {n} people don check this same message this month.'),
   error: B('Sorry, something went wrong while checking. Please try again in a moment.', 'Sorry o, something spoil as I dey check. Abeg try again small time.'),
+  forwardIt: B('Forward the message itself to me (or paste it here) and I will check it.', 'Forward the message itself give me (or paste am here) make I check am.'),
+  checksOnly: B('I can check messages, links, numbers and screenshots here. Forward me anything you are not sure about.', 'For here, I dey check messages, links, numbers and screenshots. Forward anything wey you no trust give me.'),
 };
+
+/** Where replies go: any adapter that can send (and optionally show "typing…"). */
+export type ReplyTarget = Pick<ChannelAdapter, 'send' | 'typing'>;
 
 const RE = {
   greeting: /^(hi+|hello+|hey|helo|menu|help|start|\/start|\/help|good (morning|afternoon|evening)|how far|wetin dey|hi aabo|hi ààbò|hello aabo|hello ààbò)[\s!.?🙏🏾👋]*$/i,
@@ -87,17 +93,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function createRouter(services: RouterServices, opts: RouterOptions = {}) {
   const typingDelay = opts.typingDelayMs ?? 700;
   const appUrl = (opts.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://aabo.app').replace(/\/$/, '');
-  const quizState = new Map<string, { quizId: string; expires: number }>();
-
-  async function reply(adapter: ChannelAdapter, chatId: string, text: string) {
-    if (typingDelay > 0) {
-      await adapter.typing?.(chatId).catch(() => undefined);
-      await sleep(typingDelay + Math.floor(Math.random() * typingDelay * 0.5));
-    }
+  async function reply(adapter: ReplyTarget, chatId: string, text: string) {
+    await adapter.typing?.(chatId).catch(() => undefined);
+    if (typingDelay > 0) await sleep(typingDelay + Math.floor(Math.random() * typingDelay * 0.5));
     await adapter.send(chatId, text);
   }
 
-  async function runCheck(adapter: ChannelAdapter, msg: InboundMessage, identity: Identity, overrideText?: string) {
+  async function runCheck(adapter: ReplyTarget, msg: InboundMessage, identity: Identity, overrideText?: string) {
     const quota = await services.consumeCheck(identity);
     const lang = identity.language;
     if (!quota.ok) return reply(adapter, msg.chatId, fill(MSG.quotaReached[lang], { url: appUrl }));
@@ -121,7 +123,7 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
     return reply(adapter, msg.chatId, text);
   }
 
-  async function runLookup(adapter: ChannelAdapter, chatId: string, raw: string, lang: Lang) {
+  async function runLookup(adapter: ReplyTarget, chatId: string, raw: string, lang: Lang) {
     const res = await services.lookup(raw);
     if (!res) return reply(adapter, chatId, MSG.lookupFail[lang]);
     const cat = res.category && CATEGORY_LABEL[res.category as Category] ? ` (${CATEGORY_LABEL[res.category as Category][lang]})` : '';
@@ -136,7 +138,7 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
     return reply(adapter, chatId, head + extra);
   }
 
-  async function handle(msg: InboundMessage, adapter: ChannelAdapter): Promise<void> {
+  async function handle(msg: InboundMessage, adapter: ReplyTarget): Promise<void> {
     if (msg.isGroup) return;
     const identity = await services.getIdentity(msg.channel, msg.senderId, { displayName: msg.senderName, phone: msg.senderPhone });
     if (identity.blocked) return;
@@ -145,10 +147,10 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
 
     try {
       // Pending quiz answer.
-      const quiz = quizState.get(identity.id);
-      if (quiz && quiz.expires > Date.now() && RE.quizAnswer.test(text) && !msg.image && !msg.document) {
-        quizState.delete(identity.id);
-        const q = findQuiz(quiz.quizId)!;
+      const quiz = identity.pendingQuizId ? findQuiz(identity.pendingQuizId) : undefined;
+      if (quiz && (identity.pendingQuizExpires ?? 0) > Date.now() && RE.quizAnswer.test(text) && !msg.image && !msg.document) {
+        await services.updateIdentity(identity.id, { pendingQuizId: null, pendingQuizExpires: null });
+        const q = quiz;
         const raw = RE.quizAnswer.exec(text)![1].toUpperCase();
         const choice = /\d/.test(raw) ? Number(raw) - 1 : LETTERS.indexOf(raw);
         const correct = choice === q.answer;
@@ -184,7 +186,9 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
           await reply(adapter, msg.chatId, MSG.warnIntro[lang]);
           return adapter.send(msg.chatId, warningMessage(v, lang));
         }
-        if (RE.checkQuoted.test(text) && msg.quotedText) return runCheck(adapter, msg, identity, msg.quotedText);
+        if (RE.checkQuoted.test(text)) {
+          return msg.quotedText ? runCheck(adapter, msg, identity, msg.quotedText) : reply(adapter, msg.chatId, MSG.forwardIt[lang]);
+        }
         const check = RE.check.exec(text);
         if (check) return runLookup(adapter, msg.chatId, check[1], lang);
         if (RE.tip.test(text)) return reply(adapter, msg.chatId, `${MSG.tipPrefix[lang]}\n${randomTip()[lang]}`);
@@ -198,7 +202,7 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
         }
         if (RE.quiz.test(text)) {
           const q = QUIZ[Math.floor(Math.random() * QUIZ.length)];
-          quizState.set(identity.id, { quizId: q.id, expires: Date.now() + 15 * 60_000 });
+          await services.updateIdentity(identity.id, { pendingQuizId: q.id, pendingQuizExpires: Date.now() + 15 * 60_000 });
           return reply(adapter, msg.chatId, quizText(q, lang));
         }
         const link = RE.link.exec(text);
@@ -211,14 +215,14 @@ export function createRouter(services: RouterServices, opts: RouterOptions = {})
         // A plain question (no links/numbers) goes to the Co-pilot.
         if (RE.question.test(text) && !RE.hasIndicator.test(text) && text.length < 400) {
           const answer = await services.ask(text, identity);
-          return reply(adapter, msg.chatId, answer);
+          return reply(adapter, msg.chatId, answer ?? MSG.checksOnly[lang]);
         }
       }
 
       // Everything else is something to check.
       return runCheck(adapter, msg, identity);
     } catch (err) {
-      console.error('[aabo] router error:', (err as Error).message);
+      logError('router', err);
       return reply(adapter, msg.chatId, MSG.error[lang]).catch(() => undefined);
     }
   }

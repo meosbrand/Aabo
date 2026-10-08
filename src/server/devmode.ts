@@ -7,22 +7,28 @@
  * Gateway-safe: no Next.js imports.
  */
 
+import { randomBytes, randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AI_PRESETS, isAiProviderId } from '@/lib/ai-presets';
 import { AiConfigError, buildAiConfig, platformAiConfig, type AiConfig } from './ai/config';
 import { testAiConnection } from './ai/test-connection';
 import type { AiTestResult } from '@/lib/developer-types';
-import type { AuditView, DevCode, DeveloperOverview, IntegrationView } from '@/lib/developer-types';
+import type { AuditView, ConnectionSecrets, ConnectionView, DevCode, DeveloperOverview, IntegrationView, WhatsAppProvider } from '@/lib/developer-types';
+import { configureD360Webhook, sendText, verifyCredentials } from './channels/cloud/api';
+import { connectionById, invalidateConnection, webhookUrl, type LoadedConnection } from './channels/cloud/connections';
+import { sha256Hex } from './channels/cloud/signature';
+import { CloudError, type CloudConfig, type CloudCredentials, type CloudProvider, type D360Credentials } from './channels/cloud/types';
 import { prisma } from './db';
 import { engineInfo, loadEngine } from './engine-loader';
 import { developerModeAllowed, invalidateOrgSettings, type IntegrationKind } from './integrations';
 import { roleAtLeast, type OrgActor, type OrgRole } from './org-auth';
 import { rateLimit } from './rate-limit-store';
-import { hintOf, integrationAad, open, seal, secretsAvailable } from './secrets/crypto';
+import { connectionAad, hintOf, integrationAad, open, seal, secretsAvailable } from './secrets/crypto';
 
 export type DevResult<T extends object = object> = ({ ok: true } & T) | { ok: false; code: DevCode; message?: string };
 
-export type { AuditView, DevCode, DeveloperOverview, IntegrationView };
+export type { AuditView, ConnectionSecrets, ConnectionView, DevCode, DeveloperOverview, IntegrationView };
 
 const fail = (code: DevCode, message?: string) => ({ ok: false as const, code, ...(message ? { message } : {}) });
 
@@ -46,10 +52,11 @@ async function editable(actor: OrgActor | null): Promise<DevResult<{ actor: OrgA
 export async function getDeveloperOverview(actor: OrgActor | null): Promise<DevResult<{ overview: DeveloperOverview }>> {
   if (!can(actor, 'admin')) return fail('forbidden');
   await loadEngine().catch(() => undefined);
-  const [org, rows, events] = await Promise.all([
+  const [org, rows, events, connections] = await Promise.all([
     prisma.organization.findUnique({ where: { id: actor.orgId }, select: { name: true, developerMode: true } }),
     prisma.orgIntegration.findMany({ where: { orgId: actor.orgId }, orderBy: { kind: 'asc' } }),
     prisma.auditEvent.findMany({ where: { orgId: actor.orgId }, orderBy: { createdAt: 'desc' }, take: 20 }),
+    listConnections(actor.orgId),
   ]);
   if (!org) return fail('not_found');
   const users = await prisma.user.findMany({ where: { id: { in: [...new Set(events.map((e) => e.actorUserId))] } }, select: { id: true, name: true } });
@@ -74,6 +81,7 @@ export async function getDeveloperOverview(actor: OrgActor | null): Promise<DevR
         lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
         updatedAt: r.updatedAt.toISOString(),
       })),
+      connections,
       audit: events.map((e) => ({
         action: e.action,
         target: e.target,
@@ -251,4 +259,267 @@ export async function removeIntegration(actor: OrgActor | null, kind: Integratio
 /** Preset defaults for the settings form (no secrets). */
 export function presetDefaults() {
   return AI_PRESETS;
+}
+
+// ---------------------------------------------------------------------------
+// Bring-your-own WhatsApp numbers
+// ---------------------------------------------------------------------------
+
+const label = z.string().trim().min(1).max(60);
+const phoneNumberId = z.string().trim().regex(/^\d{5,30}$/, 'Phone number ID is the long number from the WhatsApp Manager');
+const limits = {
+  dailyLimitPerUser: z.number().int().min(1).max(1000).optional(),
+  orgDailyCap: z.number().int().min(1).max(100_000).optional(),
+};
+
+export const ConnectionInput = z.discriminatedUnion('provider', [
+  z.object({
+    provider: z.literal('meta'),
+    label,
+    phoneNumberId,
+    accessToken: z.string().trim().min(20).max(4000),
+    appSecret: z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/, 'App secret looks wrong'),
+    ...limits,
+  }),
+  z.object({
+    provider: z.literal('twilio'),
+    label,
+    accountSid: z.string().trim().regex(/^AC[0-9a-fA-F]{32}$/, 'Account SID starts with AC'),
+    number: z.string().trim().regex(/^\+\d{8,15}$/, 'Use the full number, e.g. +2348012345678'),
+    authToken: z.string().trim().regex(/^[0-9a-fA-F]{32}$/, 'Auth Token is 32 characters'),
+    apiKeySid: z.string().trim().regex(/^SK[0-9a-fA-F]{32}$/).optional().or(z.literal('')),
+    apiKeySecret: z.string().trim().max(200).optional(),
+    messagingServiceSid: z.string().trim().regex(/^MG[0-9a-fA-F]{32}$/).optional().or(z.literal('')),
+    ...limits,
+  }),
+  z.object({ provider: z.literal('d360'), label, phoneNumberId, apiKey: z.string().trim().min(10).max(500), ...limits }),
+]);
+
+export const ConnectionPatch = z.object({
+  label: label.optional(),
+  enabled: z.boolean().optional(),
+  readReceipts: z.boolean().optional(),
+  copilotEnabled: z.boolean().optional(),
+  tipsEnabled: z.boolean().optional(),
+  ...limits,
+});
+
+function maskNumber(n: string): string {
+  return n.length > 6 ? `${n.slice(0, 4)}…${n.slice(-3)}` : n;
+}
+
+function connectionView(row: {
+  id: string;
+  provider: string;
+  label: string;
+  externalNumberId: string;
+  displayNumber: string | null;
+  status: string;
+  enabled: boolean;
+  lastInboundAt: Date | null;
+  lastError: string | null;
+  dailyLimitPerUser: number;
+  orgDailyCap: number;
+  readReceipts: boolean;
+  copilotEnabled: boolean;
+  tipsEnabled: boolean;
+  webhookKey: string;
+  createdAt: Date;
+}): ConnectionView {
+  return {
+    id: row.id,
+    provider: row.provider as WhatsAppProvider,
+    label: row.label,
+    externalNumberId: row.externalNumberId,
+    displayNumber: row.displayNumber,
+    status: row.status,
+    enabled: row.enabled,
+    lastInboundAt: row.lastInboundAt?.toISOString() ?? null,
+    lastError: row.lastError,
+    dailyLimitPerUser: row.dailyLimitPerUser,
+    orgDailyCap: row.orgDailyCap,
+    readReceipts: row.readReceipts,
+    copilotEnabled: row.copilotEnabled,
+    tipsEnabled: row.tipsEnabled,
+    webhookUrl: webhookUrl(row.provider as CloudProvider, row.webhookKey),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function listConnections(orgId: string): Promise<ConnectionView[]> {
+  const rows = await prisma.channelConnection.findMany({ where: { orgId }, orderBy: { createdAt: 'asc' } });
+  return rows.map(connectionView);
+}
+
+const newKey = () => randomBytes(24).toString('base64url');
+
+export async function createConnection(actor: OrgActor | null, raw: unknown): Promise<DevResult<{ connection: ConnectionView; secrets: ConnectionSecrets }>> {
+  const gate = await editable(actor);
+  if (!gate.ok) return gate;
+  const parsed = ConnectionInput.safeParse(raw);
+  if (!parsed.success) return fail('invalid', parsed.error.issues[0]?.message ?? 'Some fields are not valid.');
+  const input = parsed.data;
+  const orgId = gate.actor.orgId;
+  const id = randomUUID();
+  const webhookKey = newKey();
+  const secrets: ConnectionSecrets = { webhookUrl: webhookUrl(input.provider, webhookKey) };
+  let credentials: CloudCredentials;
+  let config: CloudConfig = {};
+  let externalNumberId: string;
+  let inboundSecretHash: string | null = null;
+  if (input.provider === 'meta') {
+    secrets.verifyToken = newKey();
+    inboundSecretHash = sha256Hex(secrets.verifyToken);
+    credentials = { provider: 'meta', accessToken: input.accessToken, appSecret: input.appSecret };
+    externalNumberId = input.phoneNumberId;
+  } else if (input.provider === 'twilio') {
+    credentials = {
+      provider: 'twilio',
+      authToken: input.authToken,
+      ...(input.apiKeySid && input.apiKeySecret ? { apiKeySid: input.apiKeySid, apiKeySecret: input.apiKeySecret } : {}),
+    };
+    config = { accountSid: input.accountSid, ...(input.messagingServiceSid ? { messagingServiceSid: input.messagingServiceSid } : {}) };
+    externalNumberId = input.number;
+  } else {
+    secrets.webhookSecret = newKey();
+    inboundSecretHash = sha256Hex(secrets.webhookSecret);
+    credentials = { provider: 'd360', apiKey: input.apiKey, webhookSecret: secrets.webhookSecret };
+    externalNumberId = input.phoneNumberId;
+  }
+  try {
+    const row = await prisma.channelConnection.create({
+      data: {
+        id,
+        orgId,
+        provider: input.provider,
+        label: input.label,
+        externalNumberId,
+        config: config as object,
+        secret: seal(JSON.stringify(credentials), connectionAad(orgId, id)),
+        inboundSecretHash,
+        webhookKey,
+        dailyLimitPerUser: input.dailyLimitPerUser ?? 50,
+        orgDailyCap: input.orgDailyCap ?? 1000,
+        createdBy: gate.actor.userId,
+      },
+    });
+    await audit(gate.actor, 'whatsapp.connect', `${input.provider}:${maskNumber(externalNumberId)}`);
+    invalidateConnection();
+    return { ok: true, connection: connectionView(row), secrets };
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return fail('duplicate', 'This number is already connected.');
+    throw err;
+  }
+}
+
+async function ownConnection(actor: OrgActor, id: string): Promise<LoadedConnection | null> {
+  const row = await prisma.channelConnection.findFirst({ where: { id, orgId: actor.orgId }, select: { id: true } });
+  if (!row) return null;
+  invalidateConnection();
+  return connectionById(id);
+}
+
+/** Check the credentials with the provider; required before the number takes messages. */
+export async function verifyConnection(actor: OrgActor | null, id: string): Promise<DevResult<{ connection: ConnectionView; manualSetup?: boolean }>> {
+  const gate = await editable(actor);
+  if (!gate.ok) return gate;
+  const limit = await rateLimit(`devtest:${gate.actor.orgId}`, 10, 3_600_000);
+  if (!limit.ok) return fail('rate_limited');
+  const conn = await ownConnection(gate.actor, id);
+  if (!conn) return fail('not_found');
+  let manualSetup: boolean | undefined;
+  try {
+    const { displayNumber } = await verifyCredentials(conn);
+    if (conn.provider === 'd360') {
+      manualSetup = await configureD360Webhook(conn, webhookUrl('d360', conn.webhookKey)).then(
+        () => false,
+        () => true,
+      );
+    }
+    await prisma.channelConnection.update({
+      where: { id },
+      data: { status: conn.status === 'active' ? 'active' : 'verified', lastError: manualSetup ? 'webhook_setup_failed' : null, ...(displayNumber ? { displayNumber } : {}) },
+    });
+    await audit(gate.actor, 'whatsapp.verify', `${conn.provider}:ok`);
+  } catch (err) {
+    const code = err instanceof CloudError ? err.code : 'unreachable';
+    await prisma.channelConnection.update({ where: { id }, data: { status: conn.status === 'active' ? 'active' : 'error', lastError: code } });
+    await audit(gate.actor, 'whatsapp.verify', `${conn.provider}:${code}`);
+    invalidateConnection();
+    return fail('provider_error', code);
+  }
+  invalidateConnection();
+  const row = await prisma.channelConnection.findUniqueOrThrow({ where: { id } });
+  return { ok: true, connection: connectionView(row), ...(manualSetup ? { manualSetup } : {}) };
+}
+
+export async function sendTestMessage(actor: OrgActor | null, id: string, to: string): Promise<DevResult> {
+  const gate = await editable(actor);
+  if (!gate.ok) return gate;
+  const limit = await rateLimit(`devtest:${gate.actor.orgId}`, 10, 3_600_000);
+  if (!limit.ok) return fail('rate_limited');
+  const conn = await ownConnection(gate.actor, id);
+  if (!conn) return fail('not_found');
+  if (!['verified', 'active'].includes(conn.status)) return fail('not_verified');
+  const digits = to.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 15) return fail('invalid', 'Enter the number with its country code, e.g. 2348012345678.');
+  try {
+    await sendText(conn, conn.provider === 'twilio' ? `+${digits}` : digits, '✅ Ààbò test message: your WhatsApp number is connected.');
+    await audit(gate.actor, 'whatsapp.test', `${conn.provider}:ok`);
+    return { ok: true };
+  } catch (err) {
+    const code = err instanceof CloudError ? err.code : 'unreachable';
+    await audit(gate.actor, 'whatsapp.test', `${conn.provider}:${code}`);
+    return fail('provider_error', code);
+  }
+}
+
+export async function updateConnection(actor: OrgActor | null, id: string, raw: unknown): Promise<DevResult> {
+  const gate = await editable(actor);
+  if (!gate.ok) return gate;
+  const parsed = ConnectionPatch.safeParse(raw);
+  if (!parsed.success) return fail('invalid', 'Some fields are not valid.');
+  const res = await prisma.channelConnection.updateMany({ where: { id, orgId: gate.actor.orgId }, data: parsed.data });
+  if (res.count !== 1) return fail('not_found');
+  await audit(gate.actor, 'whatsapp.update', Object.keys(parsed.data).join(','));
+  invalidateConnection();
+  return { ok: true };
+}
+
+/** New webhook URL and inbound secret (the old ones stop working at once). */
+export async function rotateConnection(actor: OrgActor | null, id: string): Promise<DevResult<{ secrets: ConnectionSecrets }>> {
+  const gate = await editable(actor);
+  if (!gate.ok) return gate;
+  const conn = await ownConnection(gate.actor, id);
+  if (!conn) return fail('not_found');
+  const webhookKey = newKey();
+  const secrets: ConnectionSecrets = { webhookUrl: webhookUrl(conn.provider, webhookKey) };
+  const data: Prisma.ChannelConnectionUpdateInput = { webhookKey };
+  if (conn.provider === 'meta') {
+    secrets.verifyToken = newKey();
+    data.inboundSecretHash = sha256Hex(secrets.verifyToken);
+  } else if (conn.provider === 'd360') {
+    secrets.webhookSecret = newKey();
+    data.inboundSecretHash = sha256Hex(secrets.webhookSecret);
+    const credentials = { ...(conn.credentials as D360Credentials), webhookSecret: secrets.webhookSecret };
+    data.secret = seal(JSON.stringify(credentials), connectionAad(conn.orgId, conn.id));
+    secrets.manualSetup = await configureD360Webhook({ ...conn, credentials }, secrets.webhookUrl).then(
+      () => false,
+      () => true,
+    );
+  }
+  await prisma.channelConnection.update({ where: { id }, data });
+  await audit(gate.actor, 'whatsapp.rotate', `${conn.provider}:${maskNumber(conn.externalNumberId)}`);
+  invalidateConnection();
+  return { ok: true, secrets };
+}
+
+export async function deleteConnection(actor: OrgActor | null, id: string): Promise<DevResult> {
+  if (!can(actor, 'admin')) return fail('forbidden');
+  const row = await prisma.channelConnection.findFirst({ where: { id, orgId: actor.orgId } });
+  if (!row) return fail('not_found');
+  await prisma.$transaction([prisma.inboundEvent.deleteMany({ where: { connectionId: id } }), prisma.channelConnection.delete({ where: { id } })]);
+  await audit(actor, 'whatsapp.delete', `${row.provider}:${maskNumber(row.externalNumberId)}`);
+  invalidateConnection();
+  return { ok: true };
 }

@@ -24,8 +24,10 @@ import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { AI_PRESETS, isAiProviderId, type AiProviderId, type JsonMode } from "@/lib/ai-presets";
-import type { AiTestCode, AiTestResult, DevCode, DeveloperOverview, IntegrationView } from "@/lib/developer-types";
+import type { AiTestCode, AiTestResult, DeveloperOverview, IntegrationView } from "@/lib/developer-types";
 import { L, tr } from "@/lib/i18n";
+import { WhatsAppConnections } from "@/components/app/whatsapp-connections";
+import { DEV_ERROR_TEXT } from "@/lib/developer-text";
 import {
   saveAiAction,
   saveIntelKeyAction,
@@ -100,16 +102,6 @@ const TEST_TEXT: Record<AiTestCode, { en: string; pidgin: string }> = {
   rate_limited: L("The provider is rate-limiting this key", "The provider dey limit this key"),
 };
 
-const ERROR_TEXT: Record<DevCode, { en: string; pidgin: string }> = {
-  forbidden: L("You don't have permission to do that.", "You no get permission for that one."),
-  operator_off: T.operatorOff,
-  secrets_unavailable: T.noKeys,
-  developer_mode_off: L("Turn on Developer Mode first.", "On Developer Mode first."),
-  invalid: L("Some settings are not valid.", "Some settings no correct."),
-  rate_limited: L("Too many tests. Try again in an hour.", "Una don test too much. Try again after one hour."),
-  not_found: L("Save the settings first.", "Save the settings first."),
-  platform_ai_missing: T.platformMissing,
-};
 
 function statusBadge(status: string, language: "en" | "pidgin") {
   const map: Record<string, { label: { en: string; pidgin: string }; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -153,7 +145,7 @@ export function DeveloperView({ overview }: { overview: DeveloperOverview }) {
       if (okTitle) toast({ title: tr(language, okTitle) });
       return true;
     }
-    toast({ variant: "destructive", title: res.message ?? tr(language, ERROR_TEXT[res.code]) });
+    toast({ variant: "destructive", title: res.message ?? tr(language, DEV_ERROR_TEXT[res.code]) });
     return false;
   };
 
@@ -399,10 +391,11 @@ export function DeveloperView({ overview }: { overview: DeveloperOverview }) {
           <CardTitle>{tr(language, T.whatsapp)}</CardTitle>
           <CardDescription>{tr(language, T.whatsappSub)}</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="space-y-6">
           <Button asChild variant="outline">
             <Link href="/app/guardian">{tr(language, T.openGuardian)}</Link>
           </Button>
+          <WhatsAppConnections connections={overview.connections} editable={editable} />
         </CardContent>
       </Card>
 

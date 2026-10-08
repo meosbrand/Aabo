@@ -16,6 +16,10 @@ export interface Identity {
   tipsOptIn: boolean;
   blocked: boolean;
   lastScanId?: string | null;
+  /** Quiz question waiting for an answer (kept in the database so any process can continue it). */
+  pendingQuizId?: string | null;
+  /** When the pending quiz expires (ms since epoch). */
+  pendingQuizExpires?: number | null;
 }
 
 export interface LookupSummary {
@@ -31,7 +35,7 @@ export interface LookupSummary {
 
 export interface RouterServices {
   getIdentity(channel: string, externalId: string, info: { displayName?: string; phone?: string }): Promise<Identity>;
-  updateIdentity(id: string, patch: Partial<Pick<Identity, 'language' | 'tipsOptIn' | 'lastScanId' | 'userId'>>): Promise<void>;
+  updateIdentity(id: string, patch: Partial<Pick<Identity, 'language' | 'tipsOptIn' | 'lastScanId' | 'userId' | 'pendingQuizId' | 'pendingQuizExpires'>>): Promise<void>;
   /** Consume one free check; returns false when today's quota is used up. */
   consumeCheck(identity: Identity): Promise<{ ok: boolean; limit: number }>;
   scan(input: ScanInput, identity: Identity): Promise<{ scanId: string; verdict: Verdict; seenCount: number }>;
@@ -40,6 +44,7 @@ export interface RouterServices {
   markSafe(scanId: string): Promise<void>;
   lookup(raw: string): Promise<LookupSummary | null>;
   linkAccount(code: string, identity: Identity): Promise<{ ok: boolean; name?: string }>;
-  ask(question: string, identity: Identity): Promise<string>;
+  /** Co-pilot answer, or null when the Co-pilot is not offered on this channel. */
+  ask(question: string, identity: Identity): Promise<string | null>;
   recordQuiz(identity: Identity, quizId: string, correct: boolean): Promise<void>;
 }

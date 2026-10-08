@@ -65,6 +65,39 @@ test('an owner turns on Developer Mode and connects their own AI provider', asyn
   expect(JSON.stringify(row)).not.toContain('sk-e2e-secret-key');
 });
 
+test('an owner connects their own WhatsApp number and sees the secrets only once', async ({ page }) => {
+  await page.goto('/login');
+  await page.request.post('/api/auth/sign-in/email', { data: { email: 'ngozi@e2e.test', password: PASSWORD }, headers: { origin: 'http://127.0.0.1:9100' } });
+  await page.goto('/app/developer');
+  await page.getByTestId('wa-add').click();
+  await page.getByTestId('wa-label').fill('Shop line');
+  await page.getByTestId('wa-phoneNumberId').fill('109876543210');
+  await page.getByTestId('wa-accessToken').fill('EAA-e2e-access-token-000000000000');
+  await page.getByTestId('wa-appSecret').fill('e2eappsecret0123456789');
+  await page.getByTestId('wa-save').click();
+
+  const secrets = page.getByTestId('connection-secrets');
+  await expect(secrets).toBeVisible();
+  await expect(page.getByTestId('secret-webhook-url')).toHaveValue(/\/api\/webhooks\/whatsapp\/meta\/[A-Za-z0-9_-]{32}$/);
+  const token = await page.getByTestId('secret-verify-token').inputValue();
+  expect(token).toHaveLength(32);
+  await expect(page.getByTestId('wa-connection-meta').getByTestId('wa-status')).toContainText('Not verified');
+
+  await page.reload();
+  await expect(page.getByTestId('connection-secrets')).toHaveCount(0);
+  await expect(page.getByTestId('wa-connection-meta')).toBeVisible();
+  const html = await page.content();
+  expect(html).not.toContain(token);
+  expect(html).not.toContain('EAA-e2e-access-token');
+  expect(html).not.toContain('e2eappsecret0123456789');
+
+  // The webhook answers Meta's handshake only with the token shown once.
+  const url = await page.getByTestId('wa-connection-meta').locator('input[readonly]').first().inputValue();
+  const ok = await page.request.get(`${url}?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=777`);
+  expect(await ok.text()).toBe('777');
+  expect((await page.request.get(`${url}?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=777`)).status()).toBe(403);
+});
+
 test('members of the business cannot open Developer settings', async ({ page }) => {
   await signUp(page.request, 'Tunde', 'tunde@e2e.test');
   const owner = await db.user.findUniqueOrThrow({ where: { email: 'ngozi@e2e.test' }, include: { memberships: true } });
