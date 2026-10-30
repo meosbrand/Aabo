@@ -18,7 +18,11 @@
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "feeds:sync": "tsx scripts/sync-feeds.ts",
     "postinstall": "prisma generate",
-    "test:e2e": "next build && playwright test"
+    "test:e2e": "next build && playwright test",
+    "test:pg": "node scripts/test-pg.mjs",
+    "db:pg:schema": "node scripts/prisma-schema.mjs",
+    "db:pg:migration": "node scripts/pg-migration.mjs",
+    "db:pg:deploy": "prisma migrate deploy --schema prisma/postgres/schema.prisma"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

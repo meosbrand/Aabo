@@ -15,6 +15,7 @@ import { SessionManager } from './session-manager';
 import { startTipScheduler } from './tips';
 import { runRetention } from '@/server/retention';
 import { secretsAvailable } from '@/server/secrets/crypto';
+import { Lease } from '@/server/lease';
 
 async function main() {
   if ((process.env.DATABASE_URL ?? '').startsWith('file:')) {
@@ -22,8 +23,15 @@ async function main() {
     await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;').catch(() => undefined);
   }
 
+  // Only one gateway may run WhatsApp sessions: during a deploy the new instance waits here until
+  // the old one has shut down and released the lease.
+  const lease = new Lease('gateway');
+  await lease.acquire({ onWait: () => console.log('[aabo] another gateway instance is running; waiting for it to stop…') });
+  console.log(`[aabo] gateway lease acquired (${lease.holder})`);
+
   const router = createRouter(prismaServices);
-  const stops: Array<() => Promise<void> | void> = [];
+  const stops: Array<() => Promise<void> | void> = [() => lease.release()];
+  let stopping = false;
 
   let telegram: TelegramAdapter | null = null;
   if (process.env.TELEGRAM_BOT_TOKEN) {
@@ -63,14 +71,23 @@ async function main() {
   runRetention().catch(() => undefined);
   stops.push(() => clearInterval(retention));
 
-  const shutdown = async () => {
+  const shutdown = async (code = 0) => {
+    if (stopping) return;
+    stopping = true;
     console.log('[aabo] shutting down…');
     for (const stop of stops.reverse()) await stop();
     await prisma.$disconnect();
-    process.exit(0);
+    process.exit(code);
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  // If another instance took the lease (e.g. this one was paused too long), stop at once.
+  stops.push(
+    lease.keepAlive(() => {
+      console.error('[aabo] gateway lease lost to another instance; stopping');
+      void shutdown(1);
+    }),
+  );
+  process.on('SIGINT', () => void shutdown());
+  process.on('SIGTERM', () => void shutdown());
 }
 
 main().catch((err) => {

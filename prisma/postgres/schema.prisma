@@ -1,0 +1,521 @@
+// GENERATED from prisma/schema.prisma by scripts/prisma-schema.mjs — do not edit by hand.
+// Ààbò data model — the one file to edit.
+// It runs on SQLite (local development, tests). Production uses Postgres through
+// prisma/postgres/schema.prisma, generated from this file by `npm run db:pg:schema`;
+// after a change, also add a Postgres migration with `npm run db:pg:migration -- <name>`
+// (see docs/deploy.md). String columns are used instead of enums so both databases work.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth (Better Auth core tables)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  /// "en" | "pidgin"
+  language       String  @default("en")
+  /// WhatsApp number in E.164 once linked
+  phone          String?
+  /// "user" | "reviewer" | "admin"
+  role           String  @default("user")
+  /// Minimum verdict level that triggers a Guardian alert
+  alertThreshold String  @default("SUSPICIOUS")
+  businessName   String?
+
+  sessions          Session[]
+  accounts          Account[]
+  memberships       Membership[]
+  alerts            Alert[]
+  lessonProgress    LessonProgress[]
+  checkupAnswers    CheckupAnswer[]
+  pushSubscriptions PushSubscription[]
+  emergencyContacts EmergencyContact[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// SME teams
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id              String              @id @default(cuid())
+  name            String
+  createdAt       DateTime            @default(now())
+  /// Developer Mode: bring-your-own AI / intel keys and WhatsApp API connections.
+  developerMode   Boolean             @default(false)
+  developerModeAt DateTime?
+  developerModeBy String?
+  members         Membership[]
+  invites         Invite[]
+  integrations    OrgIntegration[]
+  connections     ChannelConnection[]
+}
+
+/// An organisation's own provider settings (Developer Mode). Secrets are sealed (AES-256-GCM).
+model OrgIntegration {
+  id         String       @id @default(cuid())
+  orgId      String
+  /// "ai" | "safebrowsing" | "urlhaus"
+  kind       String
+  /// Non-secret settings, e.g. ai: { mode, provider, baseURL, model, visionModel, jsonMode, vision, temperature }
+  config     Json
+  /// Sealed secret (v1.<kid>.<iv>.<tag>.<ct>); never sent to the browser.
+  secret     String?
+  /// Last characters of the secret, for display.
+  hint       String?
+  enabled    Boolean      @default(true)
+  /// "unverified" | "verified" | "error"
+  status     String       @default("unverified")
+  /// Error code only (never provider messages).
+  lastError  String?
+  lastUsedAt DateTime?
+  createdBy  String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, kind])
+}
+
+/// An organisation's own WhatsApp number on an official API (Meta Cloud API, Twilio, 360dialog).
+model ChannelConnection {
+  id                String       @id
+  orgId             String
+  /// "meta" | "twilio" | "d360"
+  provider          String
+  label             String
+  /// Meta/360dialog phone_number_id, or the Twilio sender number (E.164)
+  externalNumberId  String
+  displayNumber     String?
+  /// Non-secret settings (e.g. Twilio accountSid, messagingServiceSid)
+  config            Json
+  /// Sealed provider credentials
+  secret            String
+  /// sha256 of the inbound verify token / webhook secret
+  inboundSecretHash String?
+  /// Unguessable path segment of the webhook URL (rotatable)
+  webhookKey        String       @unique
+  dailyLimitPerUser Int          @default(50)
+  orgDailyCap       Int          @default(1000)
+  readReceipts      Boolean      @default(false)
+  copilotEnabled    Boolean      @default(true)
+  tipsEnabled       Boolean      @default(false)
+  enabled           Boolean      @default(true)
+  /// "pending" | "verified" | "active" | "error"
+  status            String       @default("pending")
+  lastInboundAt     DateTime?
+  lastError         String?
+  createdBy         String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  org               Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, provider, externalNumberId])
+  @@index([orgId])
+}
+
+/// Webhook deliveries waiting to be processed (payload is cleared once done).
+model InboundEvent {
+  id                String    @id @default(cuid())
+  connectionId      String
+  providerMessageId String
+  payload           String?
+  /// "pending" | "processing" | "done" | "failed" | "skipped"
+  status            String    @default("pending")
+  attempts          Int       @default(0)
+  lockedAt          DateTime?
+  error             String?
+  createdAt         DateTime  @default(now())
+  processedAt       DateTime?
+
+  @@unique([connectionId, providerMessageId])
+  @@index([status, createdAt])
+}
+
+/// Who changed what in Developer Mode (never secret values).
+model AuditEvent {
+  id          String   @id @default(cuid())
+  orgId       String
+  actorUserId String
+  action      String
+  target      String?
+  createdAt   DateTime @default(now())
+
+  @@index([orgId, createdAt])
+}
+
+model Membership {
+  id        String       @id @default(cuid())
+  userId    String
+  orgId     String
+  /// "owner" | "admin" | "member"
+  role      String       @default("member")
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+}
+
+model Invite {
+  id        String       @id @default(cuid())
+  orgId     String
+  code      String       @unique
+  role      String       @default("member")
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Messaging channels
+// ---------------------------------------------------------------------------
+
+/// A person talking to Ààbò on a chat channel (WhatsApp bot, Telegram, ...).
+model ChannelIdentity {
+  id                 String    @id @default(cuid())
+  /// "whatsapp" | "telegram"
+  channel            String
+  /// Transport address (WhatsApp JID / Telegram chat id)
+  externalId         String
+  displayName        String?
+  phone              String?
+  userId             String?
+  language           String    @default("en")
+  checksToday        Int       @default(0)
+  checksDay          String?
+  tipsOptIn          Boolean   @default(false)
+  /// Reporter trust weight used by the reputation engine (0..2)
+  trust              Float     @default(1)
+  blocked            Boolean   @default(false)
+  lastScanId         String?
+  /// Set for people writing to an organisation's own WhatsApp number (Developer Mode)
+  connectionId       String?
+  /// Provider address (WhatsApp id) for BYO connections; externalId is "c:<connectionId>:<address>"
+  address            String?
+  lastInboundAt      DateTime?
+  pendingQuizId      String?
+  pendingQuizExpires DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([channel, externalId])
+  @@index([connectionId])
+}
+
+/// One-time codes that connect a chat identity to a web account.
+model LinkCode {
+  code      String    @id
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+/// A WhatsApp linked-device session run by the gateway.
+model WaSession {
+  id           String      @id @default(cuid())
+  /// "BOT" (the shared Ààbò number) | "GUARDIAN" (a user's own WhatsApp)
+  kind         String
+  ownerUserId  String?
+  phone        String?
+  /// "pending" | "qr" | "pairing" | "connected" | "disconnected" | "logged_out" | "error"
+  status       String      @default("pending")
+  /// What the web app wants: "running" | "stopped" | "logout"
+  desiredState String      @default("running")
+  qr           String?
+  pairingCode  String?
+  lastError    String?
+  lastSeenAt   DateTime?
+  scanGroups   Boolean     @default(false)
+  consentAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  keys         WaAuthKey[]
+
+  @@index([kind, desiredState])
+}
+
+model WaAuthKey {
+  sessionId String
+  key       String
+  value     String
+  session   WaSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, key])
+}
+
+// ---------------------------------------------------------------------------
+// Detection, reputation & reports
+// ---------------------------------------------------------------------------
+
+model Scan {
+  id           String   @id @default(cuid())
+  /// "web" | "share" | "api" | "whatsapp" | "telegram" | "guardian"
+  channel      String
+  /// "text" | "url" | "phone" | "account" | "image" | "file"
+  inputType    String
+  contentHash  String
+  /// Short, redacted excerpt. Never stored for Guardian scans unless flagged.
+  excerpt      String?
+  level        String
+  score        Int
+  category     String?
+  reasons      Json
+  indicators   Json
+  usedLlm      Boolean  @default(false)
+  userId       String?
+  orgId        String?
+  identityId   String?
+  /// "scam" | "safe" user feedback
+  feedback     String?
+  /// Engine that produced the verdict ("id@version")
+  engine       String?
+  /// AI model consulted, if any
+  llmModel     String?
+  /// Organisation WhatsApp connection the message came through (Developer Mode)
+  connectionId String?
+  createdAt    DateTime @default(now())
+
+  @@index([contentHash])
+  @@index([userId, createdAt])
+  @@index([orgId, createdAt])
+}
+
+/// Community report of a scam identifier (number, account, link, message).
+model Report {
+  id                 String       @id @default(cuid())
+  /// "phone" | "account" | "domain" | "url" | "wallet" | "message"
+  type               String
+  value              String
+  category           String?
+  note               String?
+  excerpt            String?
+  /// "PENDING" | "CONFIRMED" | "REJECTED"
+  status             String       @default("PENDING")
+  reporterUserId     String?
+  reporterIdentityId String?
+  scanId             String?
+  /// Reporter trust (0 = needs review before it affects reputation)
+  trust              Float?
+  createdAt          DateTime     @default(now())
+  votes              ReviewVote[]
+
+  @@index([type, value])
+  @@index([status, createdAt])
+}
+
+model ReviewVote {
+  id         String   @id @default(cuid())
+  reportId   String
+  reviewerId String
+  /// "confirm" | "reject"
+  vote       String
+  createdAt  DateTime @default(now())
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, reviewerId])
+}
+
+/// Known-bad (or known-good) identifiers: the Truecaller-style reputation table.
+model Indicator {
+  id         String   @id @default(cuid())
+  /// "phone" | "account" | "domain" | "url" | "wallet" | "fingerprint"
+  type       String
+  value      String
+  category   String?
+  /// "curated" | "community" | "feed:openphish" | "feed:phishtank" | "feed:urlhaus"
+  source     String
+  /// 0..1
+  confidence Float
+  reports    Int      @default(0)
+  label      String?
+  /// true for allow-listed identifiers (e.g. a bank's real short code)
+  safe       Boolean  @default(false)
+  firstSeen  DateTime @default(now())
+  lastSeen   DateTime @default(now())
+
+  @@unique([type, value])
+  @@index([type])
+}
+
+/// Cache for external lookups (Safe Browsing, URLhaus, RDAP, unshortening).
+model IntelCache {
+  key       String   @id
+  value     Json
+  expiresAt DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Guardian alerts, chat memory, awareness
+// ---------------------------------------------------------------------------
+
+model Alert {
+  id        String    @id @default(cuid())
+  userId    String
+  sessionId String?
+  level     String
+  score     Int
+  category  String?
+  sender    String?
+  summary   String
+  reasons   Json
+  scanId    String?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  identityId String?
+  userId     String?
+  /// "user" | "assistant"
+  role       String
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([identityId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  score       Int?
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  userId     String?
+  identityId String?
+  quizId     String
+  correct    Int
+  total      Int
+  createdAt  DateTime @default(now())
+}
+
+model CheckupAnswer {
+  userId    String
+  itemId    String
+  done      Boolean
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, itemId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  hash       String    @unique
+  prefix     String
+  userId     String?
+  orgId      String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}
+
+/// Fixed-window rate limit counters.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+}
+
+/// Exclusive, expiring locks between processes (e.g. only one messaging gateway may run WhatsApp
+/// sessions). The holder renews `expiresAt`; a lease past it can be taken over.
+model Lease {
+  name      String   @id
+  holder    String
+  expiresAt DateTime
+  updatedAt DateTime @updatedAt
+}

@@ -1,17 +1,67 @@
-# Single-server deployment (a small VPS is enough to start).
-# SQLite lives in a volume; for multiple servers switch prisma/schema.prisma to postgresql.
+# Single-server deployment (a small VPS): Postgres + the web app + the messaging gateway.
+#   cp .env.example .env    # fill in secrets; DATABASE_URL is set below
+#   docker compose up -d --build
+# To include the separately distributed detection engine, pack it into ./engine-pack first
+# (see docs/deploy.md) and uncomment additional_contexts below.
+x-app: &app
+  build:
+    context: .
+    args:
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:9002}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+      NEXT_PUBLIC_WA_BOT_NUMBER: ${NEXT_PUBLIC_WA_BOT_NUMBER:-}
+      NEXT_PUBLIC_TELEGRAM_BOT: ${NEXT_PUBLIC_TELEGRAM_BOT:-}
+    # additional_contexts:
+    #   engine-src: ./engine-pack
+  image: aabo:latest
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://aabo:${POSTGRES_PASSWORD:-change-me}@db:5432/aabo
+    DB_SYNC_ON_START: "0"
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
 services:
-  aabo:
-    build: .
+  db:
+    image: postgres:16
     restart: unless-stopped
-    env_file: .env
     environment:
-      DATABASE_URL: file:./data/aabo.db
-      ROLE: all
+      POSTGRES_USER: aabo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: aabo
+    volumes:
+      - aabo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aabo -d aabo"]
+      interval: 5s
+      retries: 20
+
+  # Applies database migrations (and seeds) once per release, then exits.
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["sh", "scripts/start.sh", "predeploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    environment:
+      DATABASE_URL: postgresql://aabo:${POSTGRES_PASSWORD:-change-me}@db:5432/aabo
+      DB_SYNC_ON_START: "0"
+      ROLE: web
     ports:
       - "9002:9002"
-    volumes:
-      - aabo-data:/app/prisma/data
+
+  gateway:
+    <<: *app
+    environment:
+      DATABASE_URL: postgresql://aabo:${POSTGRES_PASSWORD:-change-me}@db:5432/aabo
+      DB_SYNC_ON_START: "0"
+      ROLE: gateway
 
 volumes:
-  aabo-data:
+  aabo-db:

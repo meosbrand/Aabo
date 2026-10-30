@@ -1,6 +1,17 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 
+/** SQLite by default; `npm run test:pg` runs the same tests in a fresh schema of TEST_DATABASE_URL. */
+function testDatabaseUrl(): string {
+  const pg = process.env.TEST_DATABASE_URL;
+  if (!pg?.startsWith("postgres")) return "file:./test.db";
+  const url = new URL(pg);
+  url.searchParams.set("schema", `test_${process.pid}_${Date.now()}`);
+  return url.toString();
+}
+
+const databaseUrl = (process.env.AABO_TEST_DATABASE_URL ??= testDatabaseUrl());
+
 export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
@@ -14,7 +25,7 @@ export default defineConfig({
     env: {
       // Tests never hit the network or a real LLM.
       INTEL_NETWORK_LOOKUPS: "0",
-      DATABASE_URL: "file:./test.db",
+      DATABASE_URL: databaseUrl,
       AI_PROVIDER: "",
       AI_BASE_URL: "",
       AI_API_KEY: "",

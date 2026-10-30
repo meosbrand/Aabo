@@ -1,7 +1,8 @@
-// Ààbò data model.
-// String columns are used instead of enums so the same schema runs on SQLite (local/dev/tests)
-// and Postgres (production). To switch, change `provider` below to "postgresql" and point
-// DATABASE_URL at your Postgres instance (Neon/Supabase free tiers work).
+// Ààbò data model — the one file to edit.
+// It runs on SQLite (local development, tests). Production uses Postgres through
+// prisma/postgres/schema.prisma, generated from this file by `npm run db:pg:schema`;
+// after a change, also add a Postgres migration with `npm run db:pg:migration -- <name>`
+// (see docs/deploy.md). String columns are used instead of enums so both databases work.
 
 generator client {
   provider = "prisma-client-js"
@@ -507,4 +508,13 @@ model RateLimit {
   key     String   @id
   count   Int
   resetAt DateTime
+}
+
+/// Exclusive, expiring locks between processes (e.g. only one messaging gateway may run WhatsApp
+/// sessions). The holder renews `expiresAt`; a lease past it can be taken over.
+model Lease {
+  name      String   @id
+  holder    String
+  expiresAt DateTime
+  updatedAt DateTime @updatedAt
 }

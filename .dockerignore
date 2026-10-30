@@ -9,3 +9,8 @@ research
 .npmrc
 .env.*
 !.env.example
+test-results
+playwright-report
+prisma/*.db-*
+coverage
+*.tsbuildinfo
