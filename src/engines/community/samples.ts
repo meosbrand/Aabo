@@ -35,6 +35,10 @@ export const COMMUNITY_SAMPLES: LabelledSample[] = [
 
   { label: 'scam', category: 'account_takeover', minLevel: 'LIKELY_SCAM', text: 'Your token has expired. Kindly share the 6-digit code sent to your phone with our agent to reactivate it.' },
 
+  { label: 'scam', category: 'account_takeover', minLevel: 'LIKELY_SCAM', text: 'Hello, this is Tunde from Moniepoint support. A reversal code has been sent to your phone, please read it to me so we can stop the debit.' },
+  { label: 'scam', category: 'impersonation', minLevel: 'LIKELY_SCAM', text: 'Abeg na me, I dey hospital, my phone spoil. Send 50k to this account 2093847561 Kuda, I go pay you back tomorrow' },
+  { label: 'scam', category: 'impersonation', minLevel: 'LIKELY_SCAM', text: "Hi it's me, I'm using my friend's phone, mine got stolen. Please transfer 30k to this account 0123987456 Opay, I'll refund you tonight." },
+
   // --- legitimate ---
   { label: 'ham', text: 'Acct: 01****89 Amt: NGN25,000.00 CR Desc: TRF FROM ADEBAYO STORES Avail Bal: NGN143,220.50 Date: 12-Mar-2026' },
   { label: 'ham', text: '<#> 739104 is your verification code for Opay. Do not share this code with anyone.' },
@@ -75,4 +79,7 @@ export const COMMUNITY_SAMPLES: LabelledSample[] = [
   { label: 'ham', text: 'Kindly pay the dispatch fee of N1,500 so the rider can deliver.' },
   { label: 'ham', text: 'Pay for your order here: https://paystack.shop/adaeze-foods' },
   { label: 'ham', text: 'Sign in at https://login.microsoftonline.com with your work email.' },
+  { label: 'ham', text: 'The code has been sent to your phone. Enter it in the app to finish signing up.' },
+  { label: 'ham', text: 'My phone spoil, call me on this new number if you need the goods.' },
+  { label: 'ham', text: "It's me, Bola. Did you get the transfer of 50k I sent yesterday?" },
 ];

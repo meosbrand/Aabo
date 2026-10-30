@@ -59,6 +59,12 @@ const SECRET_CODES = [
   'codes? (sent|that came|wey come) to (you|your)',
 ].join('|');
 
+/** "A code was sent to your phone … read it to me": the code is named first, the ask comes later. */
+function codeSentThenAsked(t: string): boolean {
+  if (!/\b(otp|code|pin|token)\b[^.?!\n]{0,60}\b(sent|came|went|delivered)\b[^.?!\n]{0,20}\bto your (phone|line|number|sim)\b/.test(t)) return false;
+  return asks(t, 'read|send|forward|give|tell|share|drop', '(it|am|the code|the otp|the pin|them) (to|give|for)? ?(me|us|our agent|the agent)', { gap: 5 });
+}
+
 /** A demand for money: a payment verb with an amount or a fine/bail/penalty. */
 const MONEY_DEMAND =
   /\b(pay|transfer|send|settle|remit)\b[^.?!\n]{0,40}(₦|\bn\s?\d|\bngn\b|\b\d+\s?k\b|naira|\d{1,3}(,\d{3})+|\b(bail|fine|penalty|clearance|bribe|settlement)\b)/;
@@ -75,7 +81,8 @@ const TEXT_SIGNALS: TextSignal[] = [
     pidgin: 'E dey ask make you send code or PIN wey dem send you. No correct person or company go ever ask for your code.',
     test: (t) =>
       asks(t, 'send|share|forward|give|tell|read|drop|screenshot|disclose|provide', SECRET_CODES) ||
-      /\b(otp|code|pin)\b[^.?!\n]{0,40}\b(sent|came|went)\b[^.?!\n]{0,30}\b(by mistake|mistakenly|in error)\b/.test(t),
+      /\b(otp|code|pin)\b[^.?!\n]{0,40}\b(sent|came|went)\b[^.?!\n]{0,30}\b(by mistake|mistakenly|in error)\b/.test(t) ||
+      codeSentThenAsked(t),
   },
   {
     id: 'c.card_details',
@@ -187,6 +194,17 @@ const TEXT_SIGNALS: TextSignal[] = [
     en: 'It asks you to buy gift cards or send card codes. Scammers use gift cards because the money cannot be traced or returned.',
     pidgin: 'E dey ask make you buy gift card or send card code. Scammers like gift card because money no fit trace or return.',
     test: has(/\b(buy|send|get|purchase)\b[^.?!\n]{0,40}\b(gift ?cards?|itunes( cards?)?|google play cards?|steam cards?|apple cards?)\b/),
+  },
+  {
+    id: 'c.new_number_money',
+    weight: 0.5,
+    category: 'impersonation',
+    en: 'Someone says their phone is broken, lost or new and asks for money. Call them on the number you already have before sending anything.',
+    pidgin: 'Person talk say im phone spoil, lost or e get new number, and e dey ask for money. Call am for the number wey you know before you send anything.',
+    test: (t) =>
+      /(\bmy (old )?(phone|line|sim)\b[^.?!\n]{0,15}\b(spoil|spoilt|bad|broke|broken|damaged|lost|stolen|fell|fall)\b|\b(this is|na) my new (number|line)\b|\bi('m| am) (using|on) (a |my )?(new|friend'?s?|another|borrowed) (number|phone|line)\b|\blost my phone\b|\bna me\b|\bit'?s me\b)/.test(t) &&
+      /\b(send|transfer|borrow|lend|loan)\b[^.?!\n]{0,40}(\b\d+\s?k\b|₦|\bn\s?\d|naira|\d{1,3}(,\d{3})+|\bmoney\b|\bcash\b|\baccount\b)/.test(t) &&
+      /\b(please|pls|abeg|kindly|help me|can you|could you|urgent|urgently|i need)\b/.test(t),
   },
   {
     id: 'c.keep_secret',
